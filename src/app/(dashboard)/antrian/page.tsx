@@ -10,7 +10,7 @@ export default function QueuePage() {
   const [notice, setNotice] = useState("");
 
   function callNextDemo() {
-    setNotice("Mode demo: antrian berikutnya berdasarkan arrival time adalah A-005. Data belum tersimpan ke database.");
+    setNotice("Mode demo: A-004 adalah kandidat berikutnya berdasarkan arrival time setelah A-003 selesai dilayani. Data belum tersimpan ke database.");
   }
 
   return (
