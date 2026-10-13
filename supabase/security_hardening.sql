@@ -36,8 +36,8 @@ begin
     raise exception 'Login required';
   end if;
 
-  if not exists (select 1 from public.profiles where id = auth.uid()) then
-    raise exception 'Citizen profile not found';
+  if not exists (select 1 from public.profiles where id = auth.uid() and role = 'WARGA') then
+    raise exception 'Only WARGA accounts can create a queue';
   end if;
 
   if not exists (select 1 from public.services where id = p_service_id and is_active = true) then
