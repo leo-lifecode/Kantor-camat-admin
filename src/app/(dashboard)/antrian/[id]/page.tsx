@@ -1,23 +1,41 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
 import QueueStatusBadge from "@/components/queue/QueueStatusBadge";
 
-const queue = {
-  number: "A-003",
-  name: "Budi Santoso",
-  service: "Surat Domisili",
-  status: "SERVING" as const,
-  arrival: "13 Oktober 2026, 08:08:14",
-  called: "13 Oktober 2026, 08:21:03",
-  started: "13 Oktober 2026, 08:22:10",
-  completed: "-",
-  serviceDuration: "00:04:32",
-  waitingTime: "00:13:56",
-};
+const demoQueues = [
+  { number: "A-001", name: "Ahmad Fauzi", service: "Pembuatan KTP", status: "COMPLETED" as const, arrival: "13 Oktober 2026, 08:01:12", called: "08:02:00", started: "08:02:15", completed: "08:09:10", serviceDuration: "00:06:55", waitingTime: "00:00:48" },
+  { number: "A-002", name: "Siti Rahma", service: "Kartu Keluarga", status: "COMPLETED" as const, arrival: "13 Oktober 2026, 08:05:37", called: "08:09:12", started: "08:09:25", completed: "08:18:30", serviceDuration: "00:09:05", waitingTime: "00:03:35" },
+  { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", status: "SERVING" as const, arrival: "13 Oktober 2026, 08:08:14", called: "08:21:03", started: "08:22:10", completed: "-", serviceDuration: "00:04:32", waitingTime: "00:13:56" },
+  { number: "A-004", name: "Dewi Lestari", service: "Pembuatan KTP", status: "CALLED" as const, arrival: "13 Oktober 2026, 08:12:45", called: "08:26:00", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
+  { number: "A-005", name: "Rizky Pratama", service: "Kartu Keluarga", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:16:20", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
+  { number: "A-006", name: "Nur Aisyah", service: "Pembuatan KTP", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:20:11", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
+];
+
+type Status = "WAITING" | "CALLED" | "SERVING" | "COMPLETED" | "SKIPPED";
 
 export default function QueueDetailPage() {
+  const params = useParams<{ id: string }>();
+  const queueNumber = decodeURIComponent(params.id ?? "A-003");
+  const initialQueue = demoQueues.find((item) => item.number === queueNumber) ?? demoQueues[2];
+  const [status, setStatus] = useState<Status>(initialQueue.status);
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function changeStatus(next: Status) {
+    setBusy(true);
+    setNotice("");
+    // Demo mode: actions update the sample state locally until Supabase is configured.
+    setStatus(next);
+    setNotice(next === "SERVING" ? "Antrian ditandai mulai dilayani (mode demo)." : next === "COMPLETED" ? "Antrian ditandai selesai (mode demo)." : "Antrian dilewati (mode demo).");
+    setBusy(false);
+  }
+
+  const queue = { ...initialQueue, status };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center gap-3">
@@ -41,11 +59,12 @@ export default function QueueDetailPage() {
         </section>
       </div>
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="font-semibold text-gray-900">Aksi Antrian</h2><p className="mt-1 text-sm text-gray-500">Tombol berikut masih berupa UI. Aksi produksi harus terhubung ke transaksi backend.</p>
+        <h2 className="font-semibold text-gray-900">Aksi Antrian</h2><p className="mt-1 text-sm text-gray-500">Mode demo: perubahan status hanya tersimpan selama halaman terbuka.</p>
+        {notice && <p role="status" className="mt-4 rounded-xl bg-purple-50 p-3 text-sm text-purple-800">{notice}</p>}
         <div className="mt-4 flex flex-wrap gap-3">
-          <button className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700"><PlayCircle size={18} />Mulai Dilayani</button>
-          <button className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 hover:bg-green-100"><CheckCircle2 size={18} />Selesaikan</button>
-          <button className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"><SkipForward size={18} />Lewati</button>
+          <button disabled={busy || status !== "CALLED"} onClick={() => changeStatus("SERVING")} className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"><PlayCircle size={18} />Mulai Dilayani</button>
+          <button disabled={busy || status !== "SERVING"} onClick={() => changeStatus("COMPLETED")} className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={18} />Selesaikan</button>
+          <button disabled={busy || !["WAITING", "CALLED"].includes(status)} onClick={() => changeStatus("SKIPPED")} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"><SkipForward size={18} />Lewati</button>
         </div>
       </section>
     </div>
@@ -53,7 +72,7 @@ export default function QueueDetailPage() {
 }
 
 function Info({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return <div className="flex items-center gap-3">{<span className="text-gray-400">{icon}</span>}<div><p className="text-xs text-gray-500">{label}</p><p className="text-sm font-semibold text-gray-900">{value}</p></div></div>;
+  return <div className="flex items-center gap-3"><span className="text-gray-400">{icon}</span><div><p className="text-xs text-gray-500">{label}</p><p className="text-sm font-semibold text-gray-900">{value}</p></div></div>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
