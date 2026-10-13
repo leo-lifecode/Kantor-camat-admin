@@ -115,3 +115,67 @@ $$;
 
 revoke all on function public.call_next_queue() from public;
 grant execute on function public.call_next_queue() to authenticated;
+
+
+-- Automatically create a WARGA profile for each new Supabase Auth user.
+-- Role metadata from signup is intentionally ignored; promotion to ADMIN is manual.
+create or replace function public.handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, name, phone, role)
+  values (
+    new.id,
+    coalesce(nullif(trim(new.raw_user_meta_data ->> 'name'), ''), split_part(coalesce(new.email, 'warga'), '@', 1)),
+    nullif(trim(new.raw_user_meta_data ->> 'phone'), ''),
+    'WARGA'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_profile on auth.users;
+create trigger on_auth_user_created_profile
+after insert on auth.users
+for each row execute procedure public.handle_new_auth_user();
+
+-- Keep the one-counter invariant even if two admins submit service-start actions at once.
+create or replace function public.start_queue_service(p_queue_id uuid)
+returns public.queues
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare q public.queues;
+begin
+  if not public.current_user_is_admin() then
+    raise exception 'Administrator only';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('talawi_single_service_counter'));
+
+  select * into q from public.queues where id = p_queue_id for update;
+  if q.id is null then raise exception 'Queue not found'; end if;
+  if q.status <> 'CALLED' then raise exception 'Only a called queue can start service'; end if;
+  if exists (select 1 from public.queues where status = 'SERVING' and id <> p_queue_id) then
+    raise exception 'The counter is already serving another queue';
+  end if;
+
+  update public.queues
+  set status = 'SERVING',
+      start_service_time = clock_timestamp(),
+      waiting_time = greatest(0, floor(extract(epoch from (clock_timestamp() - arrival_time)))::integer),
+      updated_at = clock_timestamp()
+  where id = p_queue_id returning * into q;
+
+  return q;
+end;
+$$;
+
+revoke all on function public.handle_new_auth_user() from public;
+revoke all on function public.start_queue_service(uuid) from public;
+grant execute on function public.start_queue_service(uuid) to authenticated;
