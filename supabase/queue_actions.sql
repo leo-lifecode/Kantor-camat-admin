@@ -10,6 +10,7 @@ as $$
 declare q public.queues;
 begin
   if not public.current_user_is_admin() then raise exception 'Administrator only'; end if;
+  perform pg_advisory_xact_lock(hashtext('talawi_single_service_counter'));
   select * into q from public.queues where id = p_queue_id for update;
   if q.id is null then raise exception 'Queue not found'; end if;
   if q.status <> 'CALLED' then raise exception 'Only a called queue can start service'; end if;
@@ -35,6 +36,7 @@ as $$
 declare q public.queues;
 begin
   if not public.current_user_is_admin() then raise exception 'Administrator only'; end if;
+  perform pg_advisory_xact_lock(hashtext('talawi_single_service_counter'));
   select * into q from public.queues where id = p_queue_id for update;
   if q.id is null then raise exception 'Queue not found'; end if;
   if q.status <> 'SERVING' then raise exception 'Only a serving queue can be completed'; end if;
@@ -57,6 +59,7 @@ as $$
 declare q public.queues;
 begin
   if not public.current_user_is_admin() then raise exception 'Administrator only'; end if;
+  perform pg_advisory_xact_lock(hashtext('talawi_single_service_counter'));
   select * into q from public.queues where id = p_queue_id for update;
   if q.id is null then raise exception 'Queue not found'; end if;
   if q.status not in ('WAITING','CALLED') then
