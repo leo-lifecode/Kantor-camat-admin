@@ -21,11 +21,11 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Total Antrian" value={24} description="Antrian masuk hari ini" icon={Users} />
-        <StatCard title="Menunggu" value={8} description="Belum dipanggil" icon={Clock3} />
-        <StatCard title="Sedang Dilayani" value={1} description="Sedang berada di loket" icon={PlayCircle} />
-        <StatCard title="Selesai" value={14} description="Layanan selesai" icon={CheckCircle2} />
-        <StatCard title="Dilewati" value={1} description="Antrian yang dilewati" icon={SkipForward} />
+        <StatCard title="Total Antrian" value={6} description="Data contoh hari ini" icon={Users} />
+        <StatCard title="Menunggu" value={3} description="Belum dipanggil" icon={Clock3} />
+        <StatCard title="Sedang Dilayani" value={1} description="Nomor A-003" icon={PlayCircle} />
+        <StatCard title="Selesai" value={2} description="A-001 dan A-002" icon={CheckCircle2} />
+        <StatCard title="Dilewati" value={0} description="Belum ada yang dilewati" icon={SkipForward} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
