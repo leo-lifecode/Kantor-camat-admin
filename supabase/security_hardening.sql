@@ -117,6 +117,9 @@ revoke all on function public.call_next_queue() from public;
 grant execute on function public.call_next_queue() to authenticated;
 
 
+-- Keep announcement fields aligned with the admin demo form.
+alter table public.announcements add column if not exists category text not null default 'Informasi';
+
 -- Automatically create a WARGA profile for each new Supabase Auth user.
 -- Role metadata from signup is intentionally ignored; promotion to ADMIN is manual.
 create or replace function public.handle_new_auth_user()
