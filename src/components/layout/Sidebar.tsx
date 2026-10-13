@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import LogoutButton from "./LogoutButton";
 import { adminNavigation } from "@/constants/navigation";
 
 export default function Sidebar() {
@@ -49,10 +49,7 @@ export default function Sidebar() {
       </nav>
 
       <div className="border-t p-4">
-        <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600">
-          <LogOut size={19} />
-          Keluar
-        </button>
+        <LogoutButton />
       </div>
     </aside>
   );
