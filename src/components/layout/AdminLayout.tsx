@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, LogOut } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import LogoutButton from "./LogoutButton";
 import { adminNavigation } from "@/constants/navigation";
 
 type AdminLayoutProps = {
@@ -83,10 +84,7 @@ export default function AdminLayout({
         </nav>
 
         <div className="border-t p-4">
-          <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600">
-            <LogOut size={19} />
-            Keluar
-          </button>
+          <LogoutButton />
         </div>
       </aside>
 
