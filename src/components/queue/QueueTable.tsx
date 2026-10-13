@@ -1,6 +1,7 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import QueueStatusBadge from "./QueueStatusBadge";
 
 const queues = [
@@ -27,27 +28,20 @@ export default function QueueTable() {
               <th className="px-5 py-4 text-right font-medium">Aksi</th>
             </tr>
           </thead>
-
           <tbody className="divide-y divide-gray-100">
             {queues.map((queue) => (
               <tr key={queue.number} className="hover:bg-gray-50">
                 <td className="px-5 py-4">
-                  <span className="font-semibold text-purple-700">{queue.number}</span>
+                  <Link href={`/antrian/${queue.number}`} className="font-semibold text-purple-700 hover:underline">{queue.number}</Link>
                 </td>
                 <td className="px-5 py-4 text-sm font-medium text-gray-900">{queue.name}</td>
                 <td className="px-5 py-4 text-sm text-gray-600">{queue.service}</td>
                 <td className="px-5 py-4 font-mono text-xs text-gray-600">{queue.arrival}</td>
-                <td className="px-5 py-4">
-                  <QueueStatusBadge status={queue.status} />
-                </td>
+                <td className="px-5 py-4"><QueueStatusBadge status={queue.status} /></td>
                 <td className="px-5 py-4 text-right">
-                  <button
-                    type="button"
-                    className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                    aria-label={`Aksi untuk ${queue.number}`}
-                  >
-                    <MoreHorizontal size={19} />
-                  </button>
+                  <Link href={`/antrian/${queue.number}`} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50">
+                    Detail <ArrowUpRight size={16} />
+                  </Link>
                 </td>
               </tr>
             ))}
