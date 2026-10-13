@@ -10,7 +10,7 @@ const demoQueues = [
   { number: "A-001", name: "Ahmad Fauzi", service: "Pembuatan KTP", status: "COMPLETED" as const, arrival: "13 Oktober 2026, 08:01:12", called: "08:02:00", started: "08:02:15", completed: "08:09:10", serviceDuration: "00:06:55", waitingTime: "00:00:48" },
   { number: "A-002", name: "Siti Rahma", service: "Kartu Keluarga", status: "COMPLETED" as const, arrival: "13 Oktober 2026, 08:05:37", called: "08:09:12", started: "08:09:25", completed: "08:18:30", serviceDuration: "00:09:05", waitingTime: "00:03:35" },
   { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", status: "SERVING" as const, arrival: "13 Oktober 2026, 08:08:14", called: "08:21:03", started: "08:22:10", completed: "-", serviceDuration: "00:04:32", waitingTime: "00:13:56" },
-  { number: "A-004", name: "Dewi Lestari", service: "Pembuatan KTP", status: "CALLED" as const, arrival: "13 Oktober 2026, 08:12:45", called: "08:26:00", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
+  { number: "A-004", name: "Dewi Lestari", service: "Pembuatan KTP", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:12:45", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
   { number: "A-005", name: "Rizky Pratama", service: "Kartu Keluarga", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:16:20", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
   { number: "A-006", name: "Nur Aisyah", service: "Pembuatan KTP", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:20:11", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
 ];
@@ -30,7 +30,7 @@ export default function QueueDetailPage() {
     setNotice("");
     // Demo mode: actions update the sample state locally until Supabase is configured.
     setStatus(next);
-    setNotice(next === "SERVING" ? "Antrian ditandai mulai dilayani (mode demo)." : next === "COMPLETED" ? "Antrian ditandai selesai (mode demo)." : "Antrian dilewati (mode demo).");
+    setNotice(next === "CALLED" ? "Antrian dipanggil (mode demo)." : next === "SERVING" ? "Antrian ditandai mulai dilayani (mode demo)." : next === "COMPLETED" ? "Antrian ditandai selesai (mode demo)." : "Antrian dilewati (mode demo).");
     setBusy(false);
   }
 
