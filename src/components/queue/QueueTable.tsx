@@ -8,7 +8,7 @@ const queues = [
   { number: "A-001", name: "Ahmad Fauzi", service: "KTP", arrival: "08:01:12", status: "COMPLETED" as const },
   { number: "A-002", name: "Siti Rahma", service: "KK", arrival: "08:05:37", status: "COMPLETED" as const },
   { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", arrival: "08:08:14", status: "SERVING" as const },
-  { number: "A-004", name: "Dewi Lestari", service: "KTP", arrival: "08:12:45", status: "CALLED" as const },
+  { number: "A-004", name: "Dewi Lestari", service: "KTP", arrival: "08:12:45", status: "WAITING" as const },
   { number: "A-005", name: "Rizky Pratama", service: "KK", arrival: "08:16:20", status: "WAITING" as const },
   { number: "A-006", name: "Nur Aisyah", service: "KTP", arrival: "08:20:11", status: "WAITING" as const },
 ];
