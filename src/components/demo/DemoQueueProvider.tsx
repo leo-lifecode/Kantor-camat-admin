@@ -76,6 +76,7 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
 
   const refreshFromDatabase = useCallback(async () => {
     if (!supabaseConfigured) return;
+    setDataMode("supabase");
     try {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
