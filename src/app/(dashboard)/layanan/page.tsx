@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { Plus, Search, Briefcase, Pencil, ToggleLeft, X } from "lucide-react";
 
-type Service = { id: number; code: string; name: string; description: string; duration: number; active: boolean };
+type Service = { id: string | number; code: string; name: string; description: string; duration: number; active: boolean };
 const initialServices: Service[] = [
   { id: 1, code: "KTP", name: "Pembuatan KTP", description: "Pembuatan dan pembaruan Kartu Tanda Penduduk", duration: 15, active: true },
   { id: 2, code: "KK", name: "Kartu Keluarga", description: "Pembuatan dan perubahan Kartu Keluarga", duration: 20, active: true },
@@ -16,10 +17,23 @@ const blankForm = { code: "", name: "", description: "", duration: 15 };
 export default function ServicesPage() {
   const [services, setServices] = useState(initialServices);
   const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(blankForm);
   const [notice, setNotice] = useState("");
+
+  const databaseMode = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+  useEffect(() => {
+    if (!databaseMode) return;
+    let active = true;
+    getSupabaseBrowserClient().from("services").select("id,code,name,description,estimated_duration,is_active").order("name").then(({ data, error }) => {
+      if (!active) return;
+      if (error) { setNotice(error.message); return; }
+      setServices((data ?? []).map(row => ({ id: row.id, code: row.code, name: row.name, description: row.description ?? "", duration: row.estimated_duration, active: row.is_active })));
+    });
+    return () => { active = false; };
+  }, [databaseMode]);
 
   const filteredServices = useMemo(() => services.filter(service =>
     (service.name + " " + service.code + " " + service.description).toLowerCase().includes(search.toLowerCase())
