@@ -58,9 +58,9 @@ Fitur aplikasi warga: registrasi/login, memilih layanan dan mengambil satu nomor
 | `/dashboard` | Ringkasan dan kontrol loket |
 | `/antrian` | Daftar, filter, dan panggil antrian |
 | `/antrian/[id]` | Detail dan transisi status |
-| `/layanan` | Kelola layanan (demo) |
-| `/pengumuman` | Kelola pengumuman (demo) |
-| `/pengguna` | Daftar pengguna (demo) |
+| `/layanan` | Kelola layanan (Supabase/demo) |
+| `/pengumuman` | Kelola pengumuman (Supabase/demo) |
+| `/pengguna` | Daftar profil (Supabase/demo) |
 | `/laporan` | Rekap dan ekspor CSV (demo) |
 | `/analitik-fcfs` | Formula dan urutan FCFS |
 | `/profil` | Profil admin (demo) |
