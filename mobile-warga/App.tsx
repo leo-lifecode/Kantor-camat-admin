@@ -96,18 +96,10 @@ export default function App() {
     const userId = session.user.id;
     const channel = supabase.channel(`warga-updates-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "queues", filter: `user_id=eq.${userId}` }, () => { void loadData(userId); })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, (payload) => {
-        const row = payload.new as { title?: string; body?: string; type?: string };
-        if (row.type === "QUEUE_CALLED") {
-          setBanner(row.body ?? "Nomor antrian Anda dipanggil.");
-          Speech.speak(row.body ?? "Nomor antrian Anda dipanggil, silakan menuju loket.", { language: "id-ID", rate: 0.92 });
-          void Notifications.scheduleNotificationAsync({ content: { title: row.title ?? "Antrian dipanggil", body: row.body ?? "", sound: true }, trigger: null });
-        }
-        void loadData(userId);
-      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, (payload) => {\n        const row = payload.new as { body?: string; type?: string };\n        if (row.type === "QUEUE_CALLED") setBanner(row.body ?? "Nomor antrian Anda dipanggil.");\n      })
       .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => { void loadData(userId); })
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    return () => { void client.removeChannel(channel); };
   }, [session?.user.id, loadData]);
 
   async function authenticate() {
