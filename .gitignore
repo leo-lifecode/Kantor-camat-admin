@@ -1,0 +1,30 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+mobile-warga/.env
+mobile-warga/.env.*
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Expo / React Native
+mobile-warga/node_modules/
+mobile-warga/.expo/
+mobile-warga/dist/
+mobile-warga/web-build/
+*.keystore
+*.jks
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
