@@ -12,7 +12,7 @@ Repository ini berisi dua aplikasi:
 - Daftar antrian, pencarian, filter status/tanggal, detail timeline.
 - Transisi status FCFS: panggil, mulai dilayani, selesai, atau lewati.
 - Mode Supabase jika environment tersedia, termasuk langganan Realtime untuk perubahan tabel antrian.
-- Halaman layanan, pengumuman, pengguna, laporan CSV, analitik FCFS, dan profil. Bagian-bagian ini masih menggunakan data demo dan belum seluruh CRUD-nya terhubung ke database.
+- Halaman layanan dan pengumuman sudah mendukung Supabase; direktori pengguna membaca profil Supabase. Laporan CSV, analitik FCFS, dan profil masih memakai data demo.
 
 ## Menjalankan web admin
 
@@ -75,4 +75,4 @@ GitHub Actions menjalankan pemeriksaan TypeScript, ESLint, dan production build 
 
 ## Status integrasi
 
-Bagian antrian web telah memiliki jalur Supabase query/RPC/Realtime dan fallback demo. Halaman layanan, pengumuman, pengguna, laporan, dan analitik masih perlu dihubungkan ke data produksi. Supabase SQL belum dijalankan terhadap project nyata dari sesi ini, sehingga konfigurasi RLS, akun ADMIN, Realtime, dan kredensial push harus diverifikasi sebelum dipakai di kantor.
+Bagian antrian web memiliki jalur Supabase query/RPC/Realtime; layanan dan pengumuman mendukung baca/tulis database; direktori pengguna membaca profil. Laporan dan analitik FCFS masih memakai data contoh. Supabase SQL belum dijalankan terhadap project nyata dari sesi ini, sehingga konfigurasi RLS, akun ADMIN, Realtime, dan kredensial push harus diverifikasi sebelum dipakai di kantor.
