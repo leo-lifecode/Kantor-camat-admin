@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Speech from "expo-speech";
-import { Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { supabase } from "./src/lib/supabase";
 
