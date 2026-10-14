@@ -93,10 +93,14 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase || !session?.user.id) return;
+    const client = supabase;
     const userId = session.user.id;
-    const channel = supabase.channel(`warga-updates-${userId}`)
+    const channel = client.channel(`warga-updates-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "queues", filter: `user_id=eq.${userId}` }, () => { void loadData(userId); })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, (payload) => {\n        const row = payload.new as { body?: string; type?: string };\n        if (row.type === "QUEUE_CALLED") setBanner(row.body ?? "Nomor antrian Anda dipanggil.");\n      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, (payload) => {
+        const row = payload.new as { body?: string; type?: string };
+        if (row.type === "QUEUE_CALLED") setBanner(row.body ?? "Nomor antrian Anda dipanggil.");
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => { void loadData(userId); })
       .subscribe();
     return () => { void client.removeChannel(channel); };
