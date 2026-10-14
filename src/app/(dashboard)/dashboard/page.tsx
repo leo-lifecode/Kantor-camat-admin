@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Users,
   Clock3,
@@ -9,6 +11,7 @@ import {
 import StatCard from "@/components/dashboard/StatCard";
 import QueueStatus from "@/components/dashboard/QueueStatus";
 import CurrentQueue from "@/components/dashboard/CurrentQueue";
+import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function DashboardPage() {
   return (
@@ -21,11 +24,11 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Total Antrian" value={6} description="Data contoh hari ini" icon={Users} />
-        <StatCard title="Menunggu" value={3} description="Belum dipanggil" icon={Clock3} />
-        <StatCard title="Sedang Dilayani" value={1} description="Nomor A-003" icon={PlayCircle} />
-        <StatCard title="Selesai" value={2} description="A-001 dan A-002" icon={CheckCircle2} />
-        <StatCard title="Dilewati" value={0} description="Belum ada yang dilewati" icon={SkipForward} />
+        <StatCard title="Total Antrian" value={queues.length} description={dataMode === "supabase" ? "Data database" : "Data contoh"} icon={Users} />
+        <StatCard title="Menunggu" value={waiting} description="Belum dipanggil" icon={Clock3} />
+        <StatCard title="Sedang Dilayani" value={active ? 1 : 0} description={active ? `Nomor ${active.number}` : "Tidak ada yang dilayani"} icon={PlayCircle} />
+        <StatCard title="Selesai" value={completed} description="Antrian selesai" icon={CheckCircle2} />
+        <StatCard title="Dilewati" value={skipped} description="Antrian dilewati" icon={SkipForward} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
