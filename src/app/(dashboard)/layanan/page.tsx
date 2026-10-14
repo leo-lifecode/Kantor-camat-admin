@@ -53,7 +53,7 @@ export default function ServicesPage() {
     setShowForm(true);
   }
 
-  function saveService(event: React.FormEvent<HTMLFormElement>) {
+  async function saveService(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const code = form.code.trim().toUpperCase();
     const name = form.name.trim();
@@ -63,11 +63,27 @@ export default function ServicesPage() {
       setNotice("Kode layanan sudah digunakan. Gunakan kode yang berbeda.");
       return;
     }
+    if (databaseMode) {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const payload = { code, name, description, estimated_duration: Number(form.duration) };
+        const result = editingId !== null
+          ? await supabase.from("services").update(payload).eq("id", String(editingId))
+          : await supabase.from("services").insert({ ...payload, is_active: true });
+        if (result.error) throw result.error;
+        const { data, error } = await supabase.from("services").select("id,code,name,description,estimated_duration,is_active").order("name");
+        if (error) throw error;
+        setServices((data ?? []).map(row => ({ id: row.id, code: row.code, name: row.name, description: row.description ?? "", duration: row.estimated_duration, active: row.is_active })));
+        setNotice(editingId !== null ? "Layanan berhasil diperbarui di database." : "Layanan berhasil ditambahkan ke database.");
+        setShowForm(false);
+      } catch (error) { setNotice(error instanceof Error ? error.message : "Gagal menyimpan layanan."); }
+      return;
+    }
     if (editingId !== null) {
       setServices(current => current.map(service => service.id === editingId ? { ...service, code, name, description, duration: Number(form.duration) } : service));
       setNotice("Layanan diperbarui pada data contoh.");
     } else {
-      setServices(current => [...current, { id: Math.max(0, ...current.map(service => service.id)) + 1, code, name, description, duration: Number(form.duration), active: true }]);
+      setServices(current => [...current, { id: Math.max(0, ...current.map(service => Number(service.id))) + 1, code, name, description, duration: Number(form.duration), active: true }]);
       setNotice("Layanan baru ditambahkan pada data contoh.");
     }
     setShowForm(false);
