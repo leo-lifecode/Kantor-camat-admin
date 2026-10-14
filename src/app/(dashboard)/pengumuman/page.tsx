@@ -54,12 +54,21 @@ export default function AnnouncementsPage() {
     setContent("");
     setCategory("Informasi");
     setShowForm(false);
-    setNotice("Pengumuman ditambahkan ke data contoh dan langsung berstatus dipublikasikan.");
+    setNotice(databaseMode ? "Pengumuman tersimpan di database dan dipublikasikan." : "Pengumuman ditambahkan ke data contoh dan langsung berstatus dipublikasikan.");
   }
 
-  function togglePublished(id: number) {
-    setItems(current => current.map(item => item.id === id ? { ...item, active: !item.active } : item));
-    setNotice("{databaseMode ? "Pengumuman terhubung ke Supabase." : "Mode demo: publikasi hanya tersimpan di state halaman."}");
+  async function togglePublished(id: string | number) {
+    const item = items.find(entry => entry.id === id);
+    if (!item) return;
+    if (databaseMode) {
+      const { error } = await getSupabaseBrowserClient().from("announcements").update({ is_active: !item.active, published_at: !item.active ? new Date().toISOString() : null }).eq("id", String(id));
+      if (error) { setNotice(error.message); return; }
+      setItems(current => current.map(entry => entry.id === id ? { ...entry, active: !entry.active, date: !entry.active ? new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : entry.date } : entry));
+      setNotice("Status publikasi tersimpan di database.");
+      return;
+    }
+    setItems(current => current.map(entry => entry.id === id ? { ...entry, active: !entry.active } : entry));
+    setNotice("Status publikasi diperbarui pada data contoh.");
   }
 
   return <div className="space-y-6">
