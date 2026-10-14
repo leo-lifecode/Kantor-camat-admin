@@ -89,8 +89,17 @@ export default function ServicesPage() {
     setShowForm(false);
   }
 
-  function toggleService(id: number) {
-    setServices(current => current.map(service => service.id === id ? { ...service, active: !service.active } : service));
+  async function toggleService(id: string | number) {
+    const service = services.find(item => item.id === id);
+    if (!service) return;
+    if (databaseMode) {
+      const { error } = await getSupabaseBrowserClient().from("services").update({ is_active: !service.active }).eq("id", String(id));
+      if (error) { setNotice(error.message); return; }
+      setServices(current => current.map(item => item.id === id ? { ...item, active: !item.active } : item));
+      setNotice("Status layanan berhasil diperbarui di database.");
+      return;
+    }
+    setServices(current => current.map(item => item.id === id ? { ...item, active: !item.active } : item));
     setNotice("Status layanan diperbarui pada data contoh.");
   }
 
@@ -111,6 +120,6 @@ export default function ServicesPage() {
     <div className="grid gap-4 md:grid-cols-2">{filteredServices.map(service=><article key={service.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600"><Briefcase size={21}/></div><span className={`rounded-full px-3 py-1 text-xs font-medium ${service.active?"bg-green-50 text-green-700":"bg-gray-100 text-gray-600"}`}>{service.active?"Aktif":"Nonaktif"}</span></div><p className="mt-4 text-xs font-bold tracking-wider text-purple-600">{service.code}</p><h2 className="mt-1 text-lg font-semibold text-gray-900">{service.name}</h2><p className="mt-2 min-h-10 text-sm text-gray-500">{service.description}</p><div className="mt-4 flex items-center justify-between border-t pt-4"><p className="text-sm text-gray-600">Estimasi <strong>{service.duration} menit</strong></p><div className="flex gap-2"><button onClick={()=>openEdit(service)} aria-label={`Edit ${service.name}`} className="rounded-lg border p-2 text-gray-500 hover:bg-gray-50"><Pencil size={17}/></button><button onClick={()=>toggleService(service.id)} aria-label={service.active?"Nonaktifkan layanan":"Aktifkan layanan"} className="rounded-lg border p-2 text-gray-500 hover:bg-gray-50"><ToggleLeft size={17}/></button></div></div></article>)}
       {filteredServices.length===0 && <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500 md:col-span-2">Tidak ada layanan yang cocok.</div>}
     </div>
-    <p className="text-xs text-gray-400">Mode demo: tambah, edit, dan status hanya disimpan di state halaman, bukan database.</p>
+    <p className="text-xs text-gray-400">{databaseMode ? "Terhubung ke Supabase. Perubahan layanan disimpan ke database." : "Mode demo: tambah, edit, dan status hanya disimpan di state halaman, bukan database."}</p>
   </div>;
 }
