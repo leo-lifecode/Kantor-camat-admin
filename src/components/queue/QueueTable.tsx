@@ -3,24 +3,14 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import QueueStatusBadge from "./QueueStatusBadge";
-
-const queues = [
-  { number: "A-001", name: "Ahmad Fauzi", service: "KTP", arrival: "08:01:12", status: "COMPLETED" as const, date: "2026-10-13" },
-  { number: "A-002", name: "Siti Rahma", service: "KK", arrival: "08:05:37", status: "COMPLETED" as const, date: "2026-10-13" },
-  { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", arrival: "08:08:14", status: "SERVING" as const, date: "2026-10-13" },
-  { number: "A-004", name: "Dewi Lestari", service: "KTP", arrival: "08:12:45", status: "WAITING" as const, date: "2026-10-13" },
-  { number: "A-005", name: "Rizky Pratama", service: "KK", arrival: "08:16:20", status: "WAITING" as const, date: "2026-10-13" },
-  { number: "A-006", name: "Nur Aisyah", service: "KTP", arrival: "08:20:11", status: "WAITING" as const, date: "2026-10-13" },
-];
-
-type QueueStatus = "WAITING" | "CALLED" | "SERVING" | "COMPLETED" | "SKIPPED";
+import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
 
 export default function QueueTable({ searchTerm = "", statusFilter = "ALL", dateFilter = "2026-10-13" }: { searchTerm?: string; statusFilter?: string; dateFilter?: string }) {
+  const { queues } = useDemoQueues();
   const filteredQueues = queues.filter((queue) => {
     const matchesSearch = `${queue.number} ${queue.name} ${queue.service}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || queue.status === statusFilter;
-    const matchesDate = queue.date === dateFilter;
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus && queue.date === dateFilter;
   });
 
   return (
@@ -45,7 +35,7 @@ export default function QueueTable({ searchTerm = "", statusFilter = "ALL", date
           </tbody>
         </table>
       </div>
-      <div className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">Menampilkan {filteredQueues.length} dari {queues.filter(queue => queue.date === dateFilter).length} data contoh pada {dateFilter}.</div>
+      <div className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">Menampilkan {filteredQueues.length} dari {queues.filter(queue => queue.date === dateFilter).length} data contoh pada {dateFilter}. Status dibagikan antarhalaman, tetapi belum disimpan ke database.</div>
     </div>
   );
 }
