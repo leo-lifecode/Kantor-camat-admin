@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import LogoutButton from "./LogoutButton";
+import { DemoQueueProvider } from "@/components/demo/DemoQueueProvider";
 import { adminNavigation } from "@/constants/navigation";
 
 type AdminLayoutProps = {
