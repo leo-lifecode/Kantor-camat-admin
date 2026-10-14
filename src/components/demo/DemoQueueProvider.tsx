@@ -44,13 +44,22 @@ function formatTime(value?: string | null) {
   return new Date(value).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
-function mapDatabaseQueue(row: any): DemoQueue {
+type QueueRelation = { name: string } | { name: string }[] | null;
+type QueueDatabaseRow = {
+  id: string; queue_number: string; status: QueueStatus; arrival_time: string;
+  called_time: string | null; start_service_time: string | null; completion_time: string | null;
+  profiles?: QueueRelation; services?: QueueRelation;
+};
+
+function mapDatabaseQueue(row: QueueDatabaseRow): DemoQueue {
   const arrival = row.arrival_time ? new Date(row.arrival_time) : new Date();
+  const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const service = Array.isArray(row.services) ? row.services[0] : row.services;
   return {
     id: row.id,
     number: row.queue_number,
-    name: row.profiles?.name ?? "Warga",
-    service: row.services?.name ?? "Layanan",
+    name: profile?.name ?? "Warga",
+    service: service?.name ?? "Layanan",
     arrival: formatTime(row.arrival_time) ?? "--:--:--",
     date: arrival.toLocaleDateString("en-CA"),
     status: row.status,
