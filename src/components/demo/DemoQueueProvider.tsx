@@ -61,7 +61,7 @@ function mapDatabaseQueue(row: QueueDatabaseRow): DemoQueue {
     name: profile?.name ?? "Warga",
     service: service?.name ?? "Layanan",
     arrival: formatTime(row.arrival_time) ?? "--:--:--",
-    date: arrival.toLocaleDateString("en-CA"),
+    date: `${arrival.getFullYear()}-${String(arrival.getMonth() + 1).padStart(2, "0")}-${String(arrival.getDate()).padStart(2, "0")}`,
     status: row.status,
     called: formatTime(row.called_time),
     started: formatTime(row.start_service_time),
