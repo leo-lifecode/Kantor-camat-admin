@@ -9,11 +9,7 @@ export default function QueuePage() {
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("2026-10-13");
-  const [notice, setNotice] = useState("");
-
-  function callNextDemo() {
-    setNotice("");
-  }
+  const { callNext, notice } = useDemoQueues();
 
   return (
     <div className="space-y-6">
