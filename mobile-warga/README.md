@@ -9,6 +9,7 @@ Aplikasi Expo/React Native untuk warga: login/registrasi, mengambil satu nomor a
 3. Dari folder ini jalankan `npm install`, lalu `npx expo start`.
 4. Jalankan SQL admin repo sesuai urutan pada README utama: `supabase/schema.sql`, `supabase/queue_actions.sql`, lalu `supabase/security_hardening.sql`.
 5. Buat akun warga melalui aplikasi. Untuk akun admin, ubah role secara manual hanya untuk akun tepercaya.
+6. Untuk membangun APK Android, install EAS CLI, login, lalu jalankan `eas build --platform android --profile preview`. Konfigurasi build ada di `eas.json`; proses build memerlukan akun EAS.
 
 ## Catatan
 
