@@ -18,12 +18,12 @@ export type DemoQueue = {
 };
 
 const initialQueues: DemoQueue[] = [
-  { number: "A-001", name: "Ahmad Fauzi", service: "Pembuatan KTP", arrival: "08:01:12", date: "2026-10-13", status: "COMPLETED", called: "08:02:00", started: "08:02:15", completed: "08:09:10" },
-  { number: "A-002", name: "Siti Rahma", service: "Kartu Keluarga", arrival: "08:05:37", date: "2026-10-13", status: "COMPLETED", called: "08:09:12", started: "08:09:25", completed: "08:18:30" },
-  { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", arrival: "08:08:14", date: "2026-10-13", status: "SERVING", called: "08:21:03", started: "08:22:10" },
-  { number: "A-004", name: "Dewi Lestari", service: "Pembuatan KTP", arrival: "08:12:45", date: "2026-10-13", status: "WAITING" },
-  { number: "A-005", name: "Rizky Pratama", service: "Kartu Keluarga", arrival: "08:16:20", date: "2026-10-13", status: "WAITING" },
-  { number: "A-006", name: "Nur Aisyah", service: "Pembuatan KTP", arrival: "08:20:11", date: "2026-10-13", status: "WAITING" },
+  { number: "A-001", name: "Ahmad Fauzi", service: "Pembuatan KTP", arrival: "08:01:12", date: "2026-10-14", status: "COMPLETED", called: "08:02:00", started: "08:02:15", completed: "08:09:10" },
+  { number: "A-002", name: "Siti Rahma", service: "Kartu Keluarga", arrival: "08:05:37", date: "2026-10-14", status: "COMPLETED", called: "08:09:12", started: "08:09:25", completed: "08:18:30" },
+  { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", arrival: "08:08:14", date: "2026-10-14", status: "SERVING", called: "08:21:03", started: "08:22:10" },
+  { number: "A-004", name: "Dewi Lestari", service: "Pembuatan KTP", arrival: "08:12:45", date: "2026-10-14", status: "WAITING" },
+  { number: "A-005", name: "Rizky Pratama", service: "Kartu Keluarga", arrival: "08:16:20", date: "2026-10-14", status: "WAITING" },
+  { number: "A-006", name: "Nur Aisyah", service: "Pembuatan KTP", arrival: "08:20:11", date: "2026-10-14", status: "WAITING" },
 ];
 
 type QueueContextValue = {
