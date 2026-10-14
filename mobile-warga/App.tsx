@@ -14,7 +14,8 @@ type Queue = {
   id: string; queue_number: string; status: string; arrival_time: string;
   called_time: string | null; service?: { name: string } | null;
 };
-type Announcement = { id: string; title: string; content: string; category: string; image_url: string | null; published_at: string | null };\ntype QueueRow = { id: string; queue_number: string; status: string; arrival_time: string; called_time: string | null; services: { name: string } | { name: string }[] | null };
+type Announcement = { id: string; title: string; content: string; category: string; image_url: string | null; published_at: string | null };
+type QueueRow = { id: string; queue_number: string; status: string; arrival_time: string; called_time: string | null; services: { name: string } | { name: string }[] | null };;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -55,8 +56,8 @@ export default function App() {
     }
     if (queueResult.error) setBanner(queueResult.error.message);
     else {
-      const row = queueResult.data as any;
-      const nextQueue: Queue | null = row ? { ...row, service: Array.isArray(row.services) ? row.services[0] : row.services } : null;
+      const row = queueResult.data as QueueRow | null;
+      const nextQueue: Queue | null = row ? { id: row.id, queue_number: row.queue_number, status: row.status, arrival_time: row.arrival_time, called_time: row.called_time, service: Array.isArray(row.services) ? row.services[0] : row.services } : null;
       if (nextQueue?.status === "CALLED" && lastQueueStatus.current !== "CALLED") {
         const spoken = `Nomor antrian Anda ${nextQueue.queue_number}, silakan menuju loket pelayanan.`;
         Speech.speak(spoken, { language: "id-ID", rate: 0.92 });
