@@ -12,7 +12,7 @@ Repository ini berisi dua aplikasi:
 - Daftar antrian, pencarian, filter status/tanggal, detail timeline.
 - Transisi status FCFS: panggil, mulai dilayani, selesai, atau lewati.
 - Mode Supabase jika environment tersedia, termasuk langganan Realtime untuk perubahan tabel antrian.
-- Halaman layanan dan pengumuman sudah mendukung Supabase; direktori pengguna membaca profil Supabase. Laporan CSV, analitik FCFS, dan profil masih memakai data demo.
+- Halaman layanan dan pengumuman sudah mendukung Supabase; direktori pengguna membaca profil Supabase. Laporan CSV dan analitik FCFS membaca data antrian Supabase; profil mendukung pembaruan data profil dan email Auth.
 
 ## Menjalankan web admin
 
@@ -61,9 +61,9 @@ Fitur aplikasi warga: registrasi/login, memilih layanan dan mengambil satu nomor
 | `/layanan` | Kelola layanan (Supabase/demo) |
 | `/pengumuman` | Kelola pengumuman (Supabase/demo) |
 | `/pengguna` | Daftar profil (Supabase/demo) |
-| `/laporan` | Rekap dan ekspor CSV (demo) |
-| `/analitik-fcfs` | Formula dan urutan FCFS |
-| `/profil` | Profil admin (demo) |
+| `/laporan` | Rekap dan ekspor CSV (Supabase/demo) |
+| `/analitik-fcfs` | Formula dan analitik timestamp (Supabase/demo) |
+| `/profil` | Profil admin (Supabase/demo) |
 
 ## Aturan FCFS dan satu loket
 
@@ -75,4 +75,4 @@ GitHub Actions menjalankan pemeriksaan TypeScript, ESLint, dan production build 
 
 ## Status integrasi
 
-Bagian antrian web memiliki jalur Supabase query/RPC/Realtime; layanan dan pengumuman mendukung baca/tulis database; direktori pengguna membaca profil. Laporan dan analitik FCFS masih memakai data contoh. Supabase SQL belum dijalankan terhadap project nyata dari sesi ini, sehingga konfigurasi RLS, akun ADMIN, Realtime, dan kredensial push harus diverifikasi sebelum dipakai di kantor.
+Bagian antrian web memiliki jalur Supabase query/RPC/Realtime; layanan dan pengumuman mendukung baca/tulis; direktori pengguna membaca profil; laporan dan analitik menghitung data antrian dari Supabase; profil mendukung update Supabase Auth/profiles. Supabase SQL belum dijalankan terhadap project nyata dari sesi ini, sehingga konfigurasi RLS, akun ADMIN, Realtime, dan kredensial push harus diverifikasi sebelum dipakai di kantor.
