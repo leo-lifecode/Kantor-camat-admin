@@ -22,7 +22,7 @@ export default function QueueDetailPage() {
   const canSkip = queue.status === "WAITING" || queue.status === "CALLED";
 
   function action(next: QueueStatus) {
-    updateStatus(queue.number, next);
+    void updateStatus(queueNumber, next);
   }
 
   return (
