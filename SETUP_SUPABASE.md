@@ -58,7 +58,7 @@ Scan QR dengan Expo Go atau jalankan emulator Android. Pastikan variabel `EXPO_P
 
 ## Status integrasi dan batasan
 
-- Web: daftar antrian, detail, status loket, RPC FCFS, dan langganan Realtime sudah memiliki jalur Supabase. Layanan, pengumuman, pengguna, laporan, dan analitik masih demo.
+- Web: daftar antrian, detail, status loket, RPC FCFS, Realtime, CRUD layanan/pengumuman, direktori profil, laporan, analitik, dan profil admin memiliki jalur Supabase. Uji seluruh operasi dengan akun ADMIN pada project Anda.
 - Mobile: login/registrasi, ambil nomor, status antrian, pengumuman, Realtime, notifikasi lokal, dan text-to-speech sudah disediakan dalam kode.
 - Push notification ketika aplikasi ditutup membutuhkan konfigurasi kredensial FCM/Expo Push dan pengiriman token perangkat. Belum dikonfigurasi.
 - SQL belum dijalankan pada project Supabase produksi dari sesi ini; lakukan verifikasi RLS dan fungsi sebelum digunakan di kantor.
