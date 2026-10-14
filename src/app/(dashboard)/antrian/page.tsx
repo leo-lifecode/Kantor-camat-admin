@@ -8,7 +8,7 @@ import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 export default function QueuePage() {
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
-  const [date, setDate] = useState("2026-10-13");
+  const [date, setDate] = useState(() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; });
   const { callNext, notice } = useDemoQueues();
 
   return (
