@@ -1,40 +1,29 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
 import QueueStatusBadge from "@/components/queue/QueueStatusBadge";
-
-const demoQueues = [
-  { number: "A-001", name: "Ahmad Fauzi", service: "Pembuatan KTP", status: "COMPLETED" as const, arrival: "13 Oktober 2026, 08:01:12", called: "08:02:00", started: "08:02:15", completed: "08:09:10", serviceDuration: "00:06:55", waitingTime: "00:00:48" },
-  { number: "A-002", name: "Siti Rahma", service: "Kartu Keluarga", status: "COMPLETED" as const, arrival: "13 Oktober 2026, 08:05:37", called: "08:09:12", started: "08:09:25", completed: "08:18:30", serviceDuration: "00:09:05", waitingTime: "00:03:35" },
-  { number: "A-003", name: "Budi Santoso", service: "Surat Domisili", status: "SERVING" as const, arrival: "13 Oktober 2026, 08:08:14", called: "08:21:03", started: "08:22:10", completed: "-", serviceDuration: "00:04:32", waitingTime: "00:13:56" },
-  { number: "A-004", name: "Dewi Lestari", service: "Pembuatan KTP", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:12:45", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
-  { number: "A-005", name: "Rizky Pratama", service: "Kartu Keluarga", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:16:20", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
-  { number: "A-006", name: "Nur Aisyah", service: "Pembuatan KTP", status: "WAITING" as const, arrival: "13 Oktober 2026, 08:20:11", called: "-", started: "-", completed: "-", serviceDuration: "-", waitingTime: "-" },
-];
-
-type Status = "WAITING" | "CALLED" | "SERVING" | "COMPLETED" | "SKIPPED";
+import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
 
 export default function QueueDetailPage() {
   const params = useParams<{ id: string }>();
   const queueNumber = decodeURIComponent(params.id ?? "A-003");
-  const initialQueue = demoQueues.find((item) => item.number === queueNumber) ?? demoQueues[2];
-  const [status, setStatus] = useState<Status>(initialQueue.status);
-  const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { queues, updateStatus, notice } = useDemoQueues();
+  const queue = queues.find((item) => item.number === queueNumber);
 
-  function changeStatus(next: Status) {
-    setBusy(true);
-    setNotice("");
-    // Demo mode: actions update the sample state locally until Supabase is configured.
-    setStatus(next);
-    setNotice(next === "CALLED" ? "Antrian dipanggil (mode demo)." : next === "SERVING" ? "Antrian ditandai mulai dilayani (mode demo)." : next === "COMPLETED" ? "Antrian ditandai selesai (mode demo)." : "Antrian dilewati (mode demo).");
-    setBusy(false);
+  if (!queue) {
+    return <div className="rounded-2xl border bg-white p-8"><h1 className="text-xl font-bold text-gray-900">Antrian tidak ditemukan</h1><p className="mt-2 text-sm text-gray-500">Nomor {queueNumber} tidak ada dalam data demo.</p><Link href="/antrian" className="mt-4 inline-flex text-sm font-semibold text-purple-700">Kembali ke daftar</Link></div>;
   }
 
-  const queue = { ...initialQueue, status };
+  const canCall = queue.status === "WAITING";
+  const canStart = queue.status === "CALLED";
+  const canComplete = queue.status === "SERVING";
+  const canSkip = queue.status === "WAITING" || queue.status === "CALLED";
+
+  function action(next: QueueStatus) {
+    updateStatus(queue.number, next);
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -52,20 +41,20 @@ export default function QueueDetailPage() {
           </div>
         </section>
         <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b px-6 py-5"><h2 className="font-semibold text-gray-900">Timeline Antrian</h2><p className="mt-1 text-xs text-gray-500">Timestamp server menjadi dasar perhitungan FCFS.</p></div>
+          <div className="border-b px-6 py-5"><h2 className="font-semibold text-gray-900">Timeline Antrian</h2><p className="mt-1 text-xs text-gray-500">Timestamp kedatangan menentukan urutan FCFS.</p></div>
           <div className="grid gap-4 p-6 sm:grid-cols-2">
-            <Metric label="Arrival Time" value={queue.arrival} /><Metric label="Called Time" value={queue.called} /><Metric label="Start Service" value={queue.started} /><Metric label="Completion Time" value={queue.completed} /><Metric label="Service Duration" value={queue.serviceDuration} /><Metric label="Waiting Time" value={queue.waitingTime} />
+            <Metric label="Arrival Time" value={`${queue.date}, ${queue.arrival}`} /><Metric label="Called Time" value={queue.called ?? "-"} /><Metric label="Start Service" value={queue.started ?? "-"} /><Metric label="Completion Time" value={queue.completed ?? "-"} /><Metric label="Service Duration" value={queue.started && queue.completed ? "Tercatat pada mode demo" : "-"} /><Metric label="Waiting Time" value={queue.called ? "Tercatat pada mode demo" : "-"} />
           </div>
         </section>
       </div>
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="font-semibold text-gray-900">Aksi Antrian</h2><p className="mt-1 text-sm text-gray-500">Mode demo: perubahan status hanya tersimpan selama halaman terbuka.</p>
+        <h2 className="font-semibold text-gray-900">Aksi Antrian</h2><p className="mt-1 text-sm text-gray-500">Status berubah langsung di dashboard selama sesi demo aktif. Belum tersimpan ke database.</p>
         {notice && <p role="status" className="mt-4 rounded-xl bg-purple-50 p-3 text-sm text-purple-800">{notice}</p>}
         <div className="mt-4 flex flex-wrap gap-3">
-          <button disabled={busy || status !== "WAITING"} onClick={() => changeStatus("CALLED")} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"><Clock3 size={18} />Panggil Antrian</button>
-          <button disabled={busy || status !== "CALLED"} onClick={() => changeStatus("SERVING")} className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"><PlayCircle size={18} />Mulai Dilayani</button>
-          <button disabled={busy || status !== "SERVING"} onClick={() => changeStatus("COMPLETED")} className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={18} />Selesaikan</button>
-          <button disabled={busy || !["WAITING", "CALLED"].includes(status)} onClick={() => changeStatus("SKIPPED")} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"><SkipForward size={18} />Lewati</button>
+          <button disabled={!canCall} onClick={() => action("CALLED")} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"><Clock3 size={18} />Panggil Antrian</button>
+          <button disabled={!canStart} onClick={() => action("SERVING")} className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"><PlayCircle size={18} />Mulai Dilayani</button>
+          <button disabled={!canComplete} onClick={() => action("COMPLETED")} className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={18} />Selesaikan</button>
+          <button disabled={!canSkip} onClick={() => action("SKIPPED")} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"><SkipForward size={18} />Lewati</button>
         </div>
       </section>
     </div>
