@@ -1,30 +1,24 @@
 # Setup Supabase
 
-## 1. Install dependencies
+## 1. Konfigurasi environment
 
-```bash
-npm install @supabase/supabase-js @supabase/ssr
-```
+Untuk web admin, salin `.env.example` ke `.env.local` pada root. Untuk aplikasi warga, salin `mobile-warga/.env.example` menjadi `mobile-warga/.env`. Isi URL project dan anon/publishable key dari Supabase Project Settings → API. Jangan commit file environment dan jangan pernah menaruh service-role key di frontend.
 
-## 2. Configure environment
+## 2. Buat database dan fungsi aman
 
-Copy `.env.example` to `.env.local`, then fill the project URL and anon/public key from Supabase Project Settings → API. Do not commit `.env.local`.
-
-## 3. Create database and secure functions
-
-Run these files in the Supabase SQL Editor in this order:
+Jalankan berurutan melalui Supabase SQL Editor:
 
 1. `supabase/schema.sql`
 2. `supabase/queue_actions.sql`
 3. `supabase/security_hardening.sql`
 
-The hardening migration disables self-promotion to ADMIN, enforces one active queue per citizen, validates service selection, and serializes the single counter's FCFS call-next operation. If the unique index fails, inspect and resolve duplicate active queues before retrying.
+Migration terakhir menonaktifkan promosi role sendiri, membatasi satu antrian aktif per warga, memvalidasi layanan, membuat profil WARGA otomatis, mengunci pemanggilan FCFS untuk satu loket, dan menambahkan tabel ke publikasi Realtime jika publikasi tersedia. Jika pembuatan unique index gagal, selesaikan duplikasi antrian aktif terlebih dahulu.
 
-## 4. Create the first admin
+## 3. Buat akun ADMIN pertama
 
-1. Register the trusted administrator through Supabase Auth.
-2. Locate that user's UUID in Authentication → Users.
-3. Assign the role through SQL Editor:
+1. Daftarkan akun terpercaya melalui Supabase Auth atau form registrasi aplikasi.
+2. Buka Authentication → Users dan salin UUID akun tersebut.
+3. Jalankan SQL berikut:
 
 ```sql
 insert into public.profiles (id, name, role)
@@ -32,20 +26,39 @@ values ('AUTH_USER_UUID', 'Admin Talawi', 'ADMIN')
 on conflict (id) do update set role = 'ADMIN';
 ```
 
-Replace `AUTH_USER_UUID` with the real UUID. Never make the admin role editable by a normal user.
+Ganti `AUTH_USER_UUID` dengan UUID yang benar. Hanya akun terpercaya yang boleh dipromosikan menjadi ADMIN.
 
-## Current repository status
+## 4. Jalankan web admin
 
-The dashboard pages intentionally use demonstration data until a Supabase project is configured. Login uses Supabase Auth. The middleware protects dashboard routes and checks the ADMIN role when both environment variables are present. Queue RPC helpers are available in `src/lib/queue-actions.ts`; the detail-page demo buttons and list pages still need to be connected to live records.
+Dari root repository:
 
-## Production checklist
+```bash
+npm install
+npm run dev
+```
 
-- [ ] Install dependencies and set environment variables.
-- [ ] Run all three SQL files in the order above.
-- [ ] Create the first ADMIN account.
-- [ ] Connect service, announcement, user, report, and FCFS pages to database queries.
-- [ ] Connect queue detail buttons to `runQueueAction` and real queue IDs.
-- [ ] Add Supabase Realtime subscriptions and FCM push delivery.
-- [ ] Build the React Native WARGA application.
-- [ ] Test RLS with separate WARGA and ADMIN accounts.
-- [ ] Run lint, TypeScript checks, and end-to-end tests.
+Buka `http://localhost:3000`. Dengan environment Supabase, middleware memeriksa autentikasi dan role ADMIN. Tanpa environment, dashboard antrian memakai data demo.
+
+## 5. Jalankan aplikasi warga
+
+```bash
+cd mobile-warga
+npm install
+npx expo start
+```
+
+Scan QR dengan Expo Go atau jalankan emulator Android. Pastikan variabel `EXPO_PUBLIC_SUPABASE_URL` dan `EXPO_PUBLIC_SUPABASE_ANON_KEY` sudah diisi sebelum memulai Metro.
+
+## 6. Pemeriksaan Realtime
+
+- Pastikan tabel `queues`, `notifications`, dan `announcements` ada di publikasi `supabase_realtime`.
+- Pastikan RLS aktif. Warga hanya membaca antrian miliknya dan pengumuman aktif; dashboard membutuhkan profil ADMIN.
+- Uji dengan dua akun berbeda: satu WARGA dan satu ADMIN.
+- Verifikasi pemanggilan nomor menulis ke `notifications` dan status berubah pada kedua aplikasi.
+
+## Status integrasi dan batasan
+
+- Web: daftar antrian, detail, status loket, RPC FCFS, dan langganan Realtime sudah memiliki jalur Supabase. Layanan, pengumuman, pengguna, laporan, dan analitik masih demo.
+- Mobile: login/registrasi, ambil nomor, status antrian, pengumuman, Realtime, notifikasi lokal, dan text-to-speech sudah disediakan dalam kode.
+- Push notification ketika aplikasi ditutup membutuhkan konfigurasi kredensial FCM/Expo Push dan pengiriman token perangkat. Belum dikonfigurasi.
+- SQL belum dijalankan pada project Supabase produksi dari sesi ini; lakukan verifikasi RLS dan fungsi sebelum digunakan di kantor.
