@@ -1,73 +1,78 @@
-# Dashboard Admin Sistem Antrian Digital Kantor Camat Talawi
+# Sistem Antrian Digital Kantor Camat Talawi
 
-Web dashboard admin untuk proyek **Rancang Bangun Sistem Antrian Digital Berbasis Mobile dengan Notifikasi Real-Time pada Kantor Camat Talawi Menggunakan Algoritma First Come First Serve (FCFS)**.
+Proyek skripsi **Rancang Bangun Sistem Antrian Digital Berbasis Mobile dengan Notifikasi Real-Time pada Kantor Camat Talawi Menggunakan Algoritma First Come First Serve (FCFS)**.
 
-## Fitur dashboard
+Repository ini berisi dua aplikasi:
+- **Web admin**: Next.js, TypeScript, Tailwind CSS, Supabase Auth/PostgreSQL/Realtime.
+- **Aplikasi warga**: Expo + React Native, Supabase Auth/PostgreSQL/Realtime, text-to-speech dan notifikasi lokal ketika nomor dipanggil.
 
-- Ringkasan total antrian, menunggu, dilayani, selesai, dan dilewati.
-- Daftar antrian dengan pencarian, filter status, filter tanggal, dan halaman detail.
-- Demo alur satu loket: panggil, mulai dilayani, selesaikan, atau lewati antrian.
-- CRUD demo untuk jenis layanan.
-- Buat dan publikasikan/sembunyikan pengumuman demo.
-- Daftar pengguna contoh dengan pencarian dan filter role.
-- Laporan berdasarkan tanggal dengan ekspor CSV.
-- Analitik FCFS dengan rumus waktu tunggu, waktu layanan, dan urutan kedatangan.
-- Login admin berbasis Supabase Auth dan middleware pemeriksaan role ketika environment tersedia.
+## Fitur web admin
 
-## Mode demo
+- Ringkasan dashboard dan kontrol loket tunggal.
+- Daftar antrian, pencarian, filter status/tanggal, detail timeline.
+- Transisi status FCFS: panggil, mulai dilayani, selesai, atau lewati.
+- Mode Supabase jika environment tersedia, termasuk langganan Realtime untuk perubahan tabel antrian.
+- Halaman layanan, pengumuman, pengguna, laporan CSV, analitik FCFS, dan profil. Bagian-bagian ini masih menggunakan data demo dan belum seluruh CRUD-nya terhubung ke database.
 
-Halaman menggunakan data contoh. Perubahan pada layanan, pengumuman, dan status antrian hanya berada di state halaman dan tidak tersimpan permanen. Login Supabase membutuhkan konfigurasi environment dan database.
+## Menjalankan web admin
 
-## Menjalankan aplikasi
-
-1. Install Node.js versi LTS.
-2. Install dependency project, termasuk Supabase:
+1. Install Node.js LTS.
+2. Dari root repository:
    ```bash
    npm install
-   npm install @supabase/supabase-js @supabase/ssr
+   cp .env.example .env.local
    ```
-3. Salin `.env.example` menjadi `.env.local`.
-4. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` jika ingin mengaktifkan login Supabase.
-5. Jalankan development server:
+3. Isi environment:
+   ```dotenv
+   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+   ```
+4. Jalankan SQL di Supabase SQL Editor sesuai urutan:
+   1. `supabase/schema.sql`
+   2. `supabase/queue_actions.sql`
+   3. `supabase/security_hardening.sql`
+5. Jalankan `npm run dev`, lalu buka `http://localhost:3000`.
+
+Tanpa environment Supabase, dashboard antrian menggunakan data demo sementara. Jangan menaruh `service_role` key di frontend.
+
+## Menjalankan aplikasi warga
+
+1. Masuk ke folder `mobile-warga`.
+2. Salin `.env.example` menjadi `.env`, lalu isi `EXPO_PUBLIC_SUPABASE_URL` dan `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+3. Jalankan:
    ```bash
-   npm run dev
+   npm install
+   npx expo start
    ```
-6. Buka `http://localhost:3000`.
+4. Scan QR menggunakan Expo Go atau jalankan emulator Android.
 
-> Catatan: konfigurasi package manager dan script perlu diperiksa di lingkungan lokal karena build belum dijalankan dari sesi ini.
+Fitur aplikasi warga: registrasi/login, memilih layanan dan mengambil satu nomor antrian aktif, melihat status antrian, pengumuman aktif, pembaruan melalui Realtime, notifikasi lokal dan pembacaan suara saat dipanggil.
 
-## Struktur halaman
+**Push notification ketika aplikasi tertutup belum siap produksi.** Konfigurasi kredensial FCM/Expo Push dan pendaftaran token perangkat masih perlu dilakukan. Belum ada APK yang dibangun dari lingkungan ini.
+
+## Struktur halaman web
 
 | Route | Fungsi |
 | --- | --- |
 | `/login` | Login administrator |
-| `/dashboard` | Ringkasan dan kontrol loket demo |
-| `/antrian` | Daftar, pencarian, filter, dan panggil antrian demo |
-| `/antrian/[id]` | Detail dan transisi status antrian demo |
-| `/layanan` | Tambah, edit, dan aktif/nonaktif layanan demo |
-| `/pengumuman` | Buat dan publikasikan pengumuman demo |
-| `/pengguna` | Daftar akun contoh |
-| `/laporan` | Rekap dan ekspor CSV |
-| `/analitik-fcfs` | Formula dan urutan eksekusi FCFS |
-| `/profil` | Form profil admin demo |
+| `/dashboard` | Ringkasan dan kontrol loket |
+| `/antrian` | Daftar, filter, dan panggil antrian |
+| `/antrian/[id]` | Detail dan transisi status |
+| `/layanan` | Kelola layanan (demo) |
+| `/pengumuman` | Kelola pengumuman (demo) |
+| `/pengguna` | Daftar pengguna (demo) |
+| `/laporan` | Rekap dan ekspor CSV (demo) |
+| `/analitik-fcfs` | Formula dan urutan FCFS |
+| `/profil` | Profil admin (demo) |
 
-## Supabase SQL
+## Aturan FCFS dan satu loket
 
-Jalankan berurutan melalui Supabase SQL Editor:
+Urutan ditentukan dari `arrival_time ASC, id ASC`, bukan dari nomor semata. Operasi pemanggilan, mulai, selesai, dan lewati diproses melalui RPC database dengan pemeriksaan role ADMIN serta penguncian untuk loket tunggal. Warga hanya dapat memiliki satu antrian aktif.
 
-1. `supabase/schema.sql`
-2. `supabase/queue_actions.sql`
-3. `supabase/security_hardening.sql`
+## Validasi otomatis
 
-Lihat [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) untuk langkah pembuatan akun admin, kebijakan akses, dan checklist produksi.
+GitHub Actions menjalankan pemeriksaan TypeScript, ESLint, dan production build untuk aplikasi web. Aplikasi Expo berada di `mobile-warga/` dan perlu diuji terpisah pada emulator/perangkat Android.
 
-## FCFS dan satu loket
+## Status integrasi
 
-Urutan antrian menggunakan timestamp server `arrival_time ASC, id ASC`, bukan sekadar urutan nomor. Fungsi RPC database mengunci proses pemanggilan agar tidak ada dua panggilan bersamaan untuk loket yang sama. Satu warga hanya boleh memiliki satu antrian aktif.
-
-## Belum selesai
-
-- Menghubungkan halaman demo ke query Supabase.
-- Menambahkan Supabase Realtime dan pengiriman push notification FCM.
-- Membangun aplikasi React Native untuk WARGA.
-- Menjalankan lint, pemeriksaan TypeScript, build, dan pengujian alur.
+Bagian antrian web telah memiliki jalur Supabase query/RPC/Realtime dan fallback demo. Halaman layanan, pengumuman, pengguna, laporan, dan analitik masih perlu dihubungkan ke data produksi. Supabase SQL belum dijalankan terhadap project nyata dari sesi ini, sehingga konfigurasi RLS, akun ADMIN, Realtime, dan kredensial push harus diverifikasi sebelum dipakai di kantor.
