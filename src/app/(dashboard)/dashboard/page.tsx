@@ -14,6 +14,11 @@ import CurrentQueue from "@/components/dashboard/CurrentQueue";
 import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function DashboardPage() {
+  const { queues, dataMode } = useDemoQueues();
+  const waiting = queues.filter(queue => queue.status === "WAITING").length;
+  const active = queues.find(queue => queue.status === "SERVING");
+  const completed = queues.filter(queue => queue.status === "COMPLETED").length;
+  const skipped = queues.filter(queue => queue.status === "SKIPPED").length;
   return (
     <div className="space-y-6">
       <div>
