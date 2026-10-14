@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, Platform, RefreshControl, SafeAreaView, ScrollView,
+  ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import * as Notifications from "expo-notifications";
@@ -14,7 +14,7 @@ type Queue = {
   id: string; queue_number: string; status: string; arrival_time: string;
   called_time: string | null; service?: { name: string } | null;
 };
-type Announcement = { id: string; title: string; content: string; category: string; image_url: string | null; published_at: string | null };
+type Announcement = { id: string; title: string; content: string; category: string; image_url: string | null; published_at: string | null };\ntype QueueRow = { id: string; queue_number: string; status: string; arrival_time: string; called_time: string | null; services: { name: string } | { name: string }[] | null };
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
