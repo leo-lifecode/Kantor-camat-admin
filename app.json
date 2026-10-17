@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "0c8a0f64-1d48-4371-9cbf-c6093ca530c2"
+      }
+    },
+    "android": {
+      "package": "com.fahrizalas.kantorcamattalawiadmin"
+    }
+  }
+}

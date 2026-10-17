@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1013110983757",
+    "project_id": "antrian-talawi",
+    "storage_bucket": "antrian-talawi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1013110983757:android:e7e99093bd5eda39d52004",
+        "android_client_info": {
+          "package_name": "id.go.talawi.antrianwarga"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsdZoO9FSRbsUm9T2v2qVXGUx15qF2H-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
