@@ -46,7 +46,6 @@ export default function App() {
   const [selectedService, setSelectedService] = useState("");
   const [queue, setQueue] = useState<Queue | null>(null);
   const [queueHistory, setQueueHistory] = useState<HistoryQueue[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [banner, setBanner] = useState("");
@@ -100,7 +99,7 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       if (nextSession?.user.id) void loadData(nextSession.user.id);
-      else { setQueue(null); setAnnouncements([]); }
+      else { setQueue(null); setQueueHistory([]); setAnnouncements([]); }
     });
     return () => { alive = false; listener.subscription.unsubscribe(); };
   }, [loadData]);
@@ -382,8 +381,7 @@ export default function App() {
             <Text style={styles.historyRefreshText}>↻ Segarkan</Text>
           </TouchableOpacity>
         </View>
-        {historyLoading && <View style={styles.emptyCard}><ActivityIndicator color={colors.purple} /><Text style={styles.muted}>Memuat riwayat...</Text></View>}
-        {!historyLoading && queueHistory.length === 0 && <View style={styles.emptyCard}>
+        {queueHistory.length === 0 && <View style={styles.emptyCard}>
           <Text style={styles.historyEmptyIcon}>◷</Text>
           <Text style={styles.sectionTitle}>Belum ada riwayat</Text>
           <Text style={styles.muted}>Antrean yang selesai, dilewati, atau dibatalkan akan muncul di sini.</Text>
