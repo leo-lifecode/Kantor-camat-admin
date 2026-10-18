@@ -1,4 +1,4 @@
-type QueueStatus = "WAITING" | "CALLED" | "SERVING" | "COMPLETED" | "SKIPPED";
+import type { QueueStatus } from "@/components/demo/DemoQueueProvider";
 
 const styles: Record<QueueStatus, string> = {
   WAITING: "bg-amber-50 text-amber-700",
@@ -6,6 +6,7 @@ const styles: Record<QueueStatus, string> = {
   SERVING: "bg-purple-50 text-purple-700",
   COMPLETED: "bg-green-50 text-green-700",
   SKIPPED: "bg-red-50 text-red-700",
+  CANCELLED: "bg-gray-100 text-gray-600",
 };
 
 const labels: Record<QueueStatus, string> = {
@@ -14,6 +15,7 @@ const labels: Record<QueueStatus, string> = {
   SERVING: "Dilayani",
   COMPLETED: "Selesai",
   SKIPPED: "Dilewati",
+  CANCELLED: "Dibatalkan",
 };
 
 export default function QueueStatusBadge({ status }: { status: QueueStatus }) {
