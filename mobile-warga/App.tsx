@@ -31,6 +31,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [registerMode, setRegisterMode] = useState(false);
+  const [screen, setScreen] = useState<"home" | "services" | "status" | "history" | "profile">("home");
+  const [serviceQuery, setServiceQuery] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,6 +71,7 @@ export default function App() {
       }
       lastQueueStatus.current = nextQueue?.status ?? null;
       setQueue(nextQueue);
+      setScreen(nextQueue ? "status" : "home");
     }
     if (announcementResult.error) setBanner(announcementResult.error.message);
     else setAnnouncements((announcementResult.data ?? []) as Announcement[]);
@@ -134,6 +137,7 @@ export default function App() {
       if (error) throw error;
       setBanner(`Nomor antrian ${data.queue_number} berhasil dibuat. Simpan nomor ini.`);
       await loadData(session!.user.id);
+      setScreen("status");
     } catch (error) { Alert.alert("Tidak dapat mengambil antrian", error instanceof Error ? error.message : "Terjadi kesalahan."); }
     finally { setBusy(false); }
   }
@@ -151,16 +155,183 @@ export default function App() {
   if (loading) return <SafeAreaView style={styles.center}><ActivityIndicator size="large" color={colors.purple} /><Text style={styles.muted}>Memuat aplikasi...</Text></SafeAreaView>;
   if (!session) return <SafeAreaView style={styles.authScreen}><ExpoStatusBar style="dark" /><View style={styles.brand}><Text style={styles.logo}>T</Text><Text style={styles.title}>Antrian Talawi</Text><Text style={styles.muted}>Layanan administrasi, tanpa perlu menebak giliran.</Text></View><View style={styles.card}><Text style={styles.heading}>{registerMode ? "Buat akun warga" : "Masuk ke akun"}</Text>{registerMode && <TextInput value={name} onChangeText={setName} placeholder="Nama lengkap" style={styles.input} /> }<TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" style={styles.input} /><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (min. 6 karakter)" style={styles.input} /><TouchableOpacity style={styles.primaryButton} disabled={busy} onPress={() => void authenticate()}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{registerMode ? "Daftar" : "Masuk"}</Text>}</TouchableOpacity><TouchableOpacity onPress={() => setRegisterMode(!registerMode)}><Text style={styles.link}>{registerMode ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar warga"}</Text></TouchableOpacity></View></SafeAreaView>;
 
-  return <SafeAreaView style={styles.screen}><ExpoStatusBar style="dark" /><ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.purple} />} contentContainerStyle={styles.content}>
-    <View style={styles.header}><View><Text style={styles.eyebrow}>KANTOR CAMAT TALAWI</Text><Text style={styles.title}>Halo, {session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "Warga"}</Text><Text style={styles.muted}>Informasi layanan dan antrian Anda.</Text></View><TouchableOpacity onPress={() => void signOut()}><Text style={styles.link}>Keluar</Text></TouchableOpacity></View>
-    {banner ? <View style={styles.banner}><Text style={styles.bannerText}>{banner}</Text></View> : null}
-    <View style={styles.queueCard}><Text style={styles.cardEyebrow}>STATUS ANTRIAN ANDA</Text><Text style={styles.queueNumber}>{queue?.queue_number ?? "—"}</Text><Text style={styles.queueStatus}>{queue ? statusLabel(queue.status) : "Belum mengambil nomor"}</Text><Text style={styles.queueDescription}>{queue ? `${queue.service?.name ?? "Layanan"} · masuk ${new Date(queue.arrival_time).toLocaleTimeString("id-ID")}` : "Pilih layanan untuk mendapatkan nomor antrian."}</Text>{queue?.status === "CALLED" && <Text style={styles.calledText}>Nomor Anda dipanggil. Silakan menuju loket pelayanan.</Text>}</View>
-    {!queue ? <View style={styles.card}><Text style={styles.heading}>Ambil nomor antrian</Text><Text style={styles.muted}>Pilih layanan. Sistem menentukan urutan berdasarkan waktu kedatangan.</Text>{services.map((service) => <TouchableOpacity key={service.id} onPress={() => setSelectedService(service.id)} style={[styles.serviceOption, selectedService === service.id && styles.serviceSelected]}><View style={{ flex: 1 }}><Text style={styles.serviceName}>{service.name}</Text><Text style={styles.muted}>{service.description ?? `Estimasi ${service.estimated_duration} menit`}</Text></View><Text style={styles.radio}>{selectedService === service.id ? "●" : "○"}</Text></TouchableOpacity>)}<TouchableOpacity style={[styles.primaryButton, (!selectedService || busy) && styles.disabled]} disabled={!selectedService || busy} onPress={() => void createQueue()}>{busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Ambil Antrian</Text>}</TouchableOpacity></View> : <View style={styles.card}><Text style={styles.heading}>Sedang dalam antrian</Text><Text style={styles.muted}>Anda hanya dapat memiliki satu antrian aktif. Setelah selesai atau dilewati, Anda dapat mengambil nomor baru.</Text></View>}
-    <View style={styles.sectionHeader}><Text style={styles.heading}>Pengumuman Kantor</Text><Text style={styles.muted}>Informasi terbaru</Text></View>
-    {announcements.map((item) => <View key={item.id} style={styles.announcement}><View style={styles.tag}><Text style={styles.tagText}>{item.category || "Informasi"}</Text></View><Text style={styles.announcementTitle}>{item.title}</Text><Text style={styles.announcementBody}>{item.content}</Text>{item.published_at && <Text style={styles.date}>{new Date(item.published_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</Text>}</View>)}
-    {announcements.length === 0 && <View style={styles.card}><Text style={styles.muted}>Belum ada pengumuman yang dipublikasikan.</Text></View>}
-    <Text style={styles.footer}>Pembaruan status melalui koneksi real-time. Tarik layar ke bawah untuk menyegarkan.</Text>
-  </ScrollView></SafeAreaView>;
+  const displayName = String(session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "Warga");
+  const firstName = displayName.split(" ")[0];
+  const filteredServices = services.filter((service) =>
+    service.name.toLowerCase().includes(serviceQuery.trim().toLowerCase()) ||
+    (service.description ?? "").toLowerCase().includes(serviceQuery.trim().toLowerCase())
+  );
+  const selected = services.find((service) => service.id === selectedService);
+  const queuePosition = queue ? Math.max(1, services.length ? 1 : 1) : 0;
+  const queueStatus = queue?.status ?? "WAITING";
+  const currentStep = queueStatus === "COMPLETED" ? 5 : queueStatus === "CALLED" || queueStatus === "SERVING" ? 3 : 2;
+
+  return <SafeAreaView style={styles.screen}>
+    <ExpoStatusBar style="dark" />
+    <View style={styles.topBar}>
+      <View style={styles.brandMark}><Text style={styles.brandMarkText}>◴</Text></View>
+      <View style={styles.brandCopy}>
+        <Text style={styles.brandEyebrow}>Kecamatan Talawi</Text>
+        <Text style={styles.brandTitle}>{screen === "home" ? "Home" : screen === "services" ? "Antrian" : screen === "status" ? "Antrian" : screen === "history" ? "Riwayat" : "Profil"}</Text>
+      </View>
+      <TouchableOpacity style={styles.headerAction} onPress={() => setBanner("Notifikasi antrean akan muncul di sini.")}><Text style={styles.headerActionText}>♧</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.avatar} onPress={() => setScreen("profile")}><Text style={styles.avatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></TouchableOpacity>
+    </View>
+
+    <ScrollView
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={colors.purple} />}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled">
+      {banner ? <TouchableOpacity style={styles.banner} onPress={() => setBanner("")}><Text style={styles.bannerText}>{banner}</Text></TouchableOpacity> : null}
+
+      {screen === "home" && <>
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroTitle}>Selamat pagi, {firstName} 👋</Text>
+              <Text style={styles.heroSubtitle}>Kantor Camat Talawi • Pelayanan Terpadu</Text>
+            </View>
+            <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>Sistem aktif</Text></View>
+          </View>
+          <TouchableOpacity style={styles.heroQueue} onPress={() => setScreen(queue ? "status" : "services")}>
+            <View style={styles.heroQueueIcon}><Text style={styles.heroQueueIconText}>◖</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroQueueLabel}>{queue ? "ANTREAN ANDA" : "LAYANAN KECAMATAN"}</Text>
+              <Text style={styles.heroQueueNumber}>{queue ? queue.queue_number : "Ambil nomor"}</Text>
+              <Text style={styles.heroQueueMeta}>{queue ? statusLabel(queue.status) : "Administrasi kependudukan & surat"}</Text>
+            </View>
+            {queue ? <Text style={styles.heroQueueArrow}>›</Text> : null}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.quickAction} onPress={() => setScreen(queue ? "status" : "services")}>
+          <View style={styles.quickIcon}><Text style={styles.quickIconText}>▣</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.quickTitle}>{queue ? "Lihat antrean aktif" : "Perlu layanan kecamatan?"}</Text>
+            <Text style={styles.quickSubtitle}>{queue ? "Pantau posisi dan status layanan" : "Pilih layanan dan ambil nomor antrean"}</Text>
+          </View>
+          <View style={styles.quickButton}><Text style={styles.quickButtonText}>{queue ? "Lihat" : "Ambil ›"}</Text></View>
+        </TouchableOpacity>
+
+        <View style={styles.sectionHeading}>
+          <View><Text style={styles.sectionTitle}>Layanan utama</Text><Text style={styles.sectionCaption}>Pilih layanan kependudukan dan surat resmi</Text></View>
+          <Text style={styles.sectionCount}>{services.length} layanan</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+          {services.slice(0, 5).map((service, index) => <TouchableOpacity key={service.id} style={styles.categoryCard} onPress={() => { setSelectedService(service.id); setScreen("services"); }}>
+            <View style={[styles.categoryIcon, { backgroundColor: index % 2 ? "#EAFBF3" : "#EEEAFE" }]}><Text style={styles.categoryIconText}>{["▣", "♧", "▤", "✿", "⌂"][index % 5]}</Text></View>
+            <Text style={styles.categoryName} numberOfLines={2}>{service.name}</Text>
+            <Text style={styles.categoryHint}>{service.estimated_duration} mnt</Text>
+          </TouchableOpacity>)}
+          {services.length === 0 && <View style={styles.emptyCard}><Text style={styles.muted}>Layanan belum tersedia.</Text></View>}
+        </ScrollView>
+
+        <View style={styles.sectionHeading}>
+          <View><Text style={styles.sectionTitle}>Informasi & pengumuman</Text><Text style={styles.sectionCaption}>Informasi terbaru dari kantor</Text></View>
+        </View>
+        {announcements.slice(0, 3).map((item) => <View key={item.id} style={styles.announcement}>
+          <View style={styles.announcementIcon}><Text style={styles.announcementIconText}>i</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.announcementMeta}>{(item.category || "INFORMASI").toUpperCase()}  •  {item.published_at ? new Date(item.published_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "Terbaru"}</Text>
+            <Text style={styles.announcementTitle}>{item.title}</Text>
+            <Text style={styles.announcementBody} numberOfLines={2}>{item.content}</Text>
+          </View>
+        </View>)}
+        {announcements.length === 0 && <View style={styles.emptyCard}><Text style={styles.muted}>Belum ada pengumuman yang dipublikasikan.</Text></View>}
+
+        <View style={styles.sectionHeading}><View><Text style={styles.sectionTitle}>Status loket pelayanan</Text><Text style={styles.sectionCaption}>Estimasi waktu sesuai layanan</Text></View></View>
+        {services.slice(0, 3).map((service, index) => <TouchableOpacity key={service.id} style={styles.servicePreview} onPress={() => { setSelectedService(service.id); setScreen("services"); }}>
+          <View style={styles.servicePreviewIcon}><Text style={styles.categoryIconText}>{["▣", "♧", "▤"][index]}</Text></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.servicePreviewTitle}>{service.name}</Text>
+            <Text style={styles.servicePreviewMeta}>{service.description ?? "Pelayanan Kantor Camat Talawi"}</Text>
+            <Text style={styles.servicePreviewEstimate}>◷  Estimasi {service.estimated_duration} menit</Text>
+          </View>
+          <Text style={styles.servicePreviewArrow}>›</Text>
+        </TouchableOpacity>)}
+        <View style={styles.tipCard}><Text style={styles.tipIcon}>✓</Text><Text style={styles.tipText}><Text style={{ fontWeight: "800", color: colors.ink }}>Tips nyaman: </Text>Siapkan berkas pendukung sebelum nomor dipanggil agar pelayanan lebih lancar.</Text></View>
+      </>}
+
+      {screen === "services" && <>
+        <View style={styles.selectionHero}>
+          <View style={styles.selectionLive}><View style={styles.liveDot} /><Text style={styles.selectionLiveText}>Sistem antrean aktif • FCFS</Text></View>
+          <Text style={styles.selectionTitle}>Ambil Nomor Antrean</Text>
+          <Text style={styles.selectionSubtitle}>Pilih jenis layanan administrasi kependudukan dan perizinan terpadu.</Text>
+        </View>
+        <View style={styles.stepper}>
+          <View style={styles.step}><Text style={styles.stepCircleActive}>1</Text><Text style={styles.stepActiveText}>Layanan</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.step}><Text style={styles.stepCircle}>2</Text><Text style={styles.stepText}>Data diri</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.step}><Text style={styles.stepCircle}>3</Text><Text style={styles.stepText}>Tiket</Text></View>
+        </View>
+        <View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput value={serviceQuery} onChangeText={setServiceQuery} placeholder="Cari layanan surat, KTP, KK..." placeholderTextColor="#9999A3" style={styles.searchInput} /></View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+          <View style={styles.filterActive}><Text style={styles.filterActiveText}>Semua</Text></View>
+          <View style={styles.filterChip}><Text style={styles.filterText}>Kependudukan</Text></View>
+          <View style={styles.filterChip}><Text style={styles.filterText}>Surat & Rekomendasi</Text></View>
+        </ScrollView>
+        {filteredServices.map((service, index) => <TouchableOpacity key={service.id} activeOpacity={0.88} onPress={() => setSelectedService(service.id)} style={[styles.serviceChoice, selectedService === service.id && styles.serviceChoiceSelected]}>
+          <View style={styles.serviceChoiceTop}>
+            <View style={styles.serviceChoiceIcon}><Text style={styles.categoryIconText}>{["▣", "♧", "⇄", "✿", "⌂"][services.findIndex((item) => item.id === service.id) % 5]}</Text></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.serviceChoiceTitle}>{service.name}</Text>
+              <Text style={styles.serviceChoiceDescription}>{service.description ?? "Layanan administrasi Kantor Camat Talawi."}</Text>
+            </View>
+            <Text style={[styles.serviceChoiceRadio, selectedService === service.id && styles.serviceChoiceRadioSelected]}>{selectedService === service.id ? "●" : "○"}</Text>
+          </View>
+          <View style={styles.serviceChoiceFooter}><Text style={styles.serviceChoiceMeta}>▣  Pelayanan Kecamatan</Text><Text style={styles.serviceChoiceMeta}>◷  ±{service.estimated_duration} mnt</Text></View>
+        </TouchableOpacity>)}
+        {filteredServices.length === 0 && <View style={styles.emptyCard}><Text style={styles.muted}>Layanan tidak ditemukan.</Text></View>}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}><Text style={styles.summaryLabel}>☑  RINGKASAN ANTREAN</Text><Text style={styles.summaryPill}>Layanan</Text></View>
+          <View style={styles.divider} />
+          <Text style={styles.summaryCaption}>Layanan terpilih</Text>
+          <Text style={styles.summaryService}>{selected?.name ?? "Pilih layanan terlebih dahulu"}</Text>
+          <Text style={styles.summaryEstimate}>{selected ? "Estimasi pelayanan ±" + selected.estimated_duration + " menit" : "Nomor antrean dibuat setelah konfirmasi"}</Text>
+          <View style={styles.documentTip}><Text style={styles.documentTipText}>ⓘ  Siapkan dokumen asli dan fotokopi sesuai persyaratan layanan.</Text></View>
+        </View>
+        <TouchableOpacity style={[styles.primaryButton, (!selectedService || busy || !!queue) && styles.disabled]} disabled={!selectedService || busy || !!queue} onPress={() => void createQueue()}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{queue ? "Anda masih memiliki antrean aktif" : "Lanjut & Ambil Nomor Antrean  →"}</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.backLink} onPress={() => setScreen("home")}><Text style={styles.backLinkText}>Kembali ke Home</Text></TouchableOpacity>
+      </>}
+
+      {screen === "status" && queue && <>
+        <View style={styles.realtimeRow}><View style={styles.liveDot} /><Text style={styles.realtimeText}>Live realtime server</Text><View style={styles.updatePill}><Text style={styles.updatePillText}>↻  FCFS</Text></View></View>
+        <View style={styles.statusCard}>
+          <View style={styles.statusAccent} />
+          <View style={styles.statusTop}><View><Text style={styles.statusEyebrow}>NOMOR ANTREAN ANDA</Text><Text style={styles.statusNumber}>{queue.queue_number}</Text></View><View style={[styles.statusPill, queue.status === "CALLED" || queue.status === "SERVING" ? styles.statusPillCalled : null]}><Text style={styles.statusPillText}>●  {statusLabel(queue.status)}</Text></View></View>
+          <View style={styles.statusService}><Text style={styles.statusServiceIcon}>▤</Text><View style={{ flex: 1 }}><Text style={styles.statusServiceName}>{queue.service?.name ?? "Layanan kecamatan"}</Text><Text style={styles.statusServiceMeta}>Kantor Camat Talawi</Text></View></View>
+          <View style={styles.statusMetrics}>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Nomor</Text><Text style={styles.metricValue}>{queue.queue_number}</Text><Text style={styles.metricHint}>tiket aktif</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Estimasi</Text><Text style={styles.metricValue}>{selected?.estimated_duration ?? "—"}</Text><Text style={styles.metricHint}>menit / orang</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Status</Text><Text style={styles.metricValueSmall}>{statusLabel(queue.status)}</Text><Text style={styles.metricHint}>diperbarui live</Text></View>
+          </View>
+        </View>
+        <View style={styles.actionRow}><TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan Tiket</Text></TouchableOpacity><TouchableOpacity style={styles.cancelButton} onPress={() => Alert.alert("Batalkan antrean?", "Pembatalan antrean belum tersedia di aplikasi.", [{ text: "Tutup" }])}><Text style={styles.cancelButtonText}>⊗  Batal</Text></TouchableOpacity></View>
+        <View style={styles.timelineCard}>
+          <View style={styles.timelineHeading}><Text style={styles.sectionTitle}>Tahapan pelayanan</Text><Text style={styles.timelineAlgorithm}>Algoritma FCFS</Text></View>
+          <QueueStep done={currentStep >= 1} active={currentStep === 1} title="Tiket dibuat" caption="Antrean tercatat pada sistem" />
+          <QueueStep done={currentStep >= 2} active={currentStep === 2} title="Masuk daftar tunggu" caption="Urutan berdasarkan waktu kedatangan" />
+          <QueueStep done={currentStep >= 3} active={currentStep === 3} title="Panggilan menuju loket" caption="Pantau notifikasi saat nomor dipanggil" />
+          <QueueStep done={currentStep >= 4} active={currentStep === 4} title="Verifikasi dokumen fisik" caption="Siapkan berkas asli dan fotokopi" />
+          <QueueStep done={currentStep >= 5} active={currentStep === 5} title="Pelayanan selesai" caption="Terima dokumen dari petugas" last />
+        </View>
+        <View style={styles.tipCard}><Text style={styles.tipIcon}>i</Text><Text style={styles.tipText}>Harap siapkan berkas asli dan fotokopi sebelum nomor Anda dipanggil ke loket pelayanan.</Text></View>
+      </>}
+
+      {screen === "status" && !queue && <View style={styles.emptyCard}><Text style={styles.sectionTitle}>Belum ada antrean aktif</Text><Text style={styles.muted}>Pilih layanan untuk mengambil nomor antrean.</Text><TouchableOpacity style={styles.primaryButton} onPress={() => setScreen("services")}><Text style={styles.primaryText}>Pilih layanan</Text></TouchableOpacity></View>}
+      {screen === "history" && <View style={styles.emptyCard}><Text style={styles.sectionTitle}>Riwayat antrean</Text><Text style={styles.muted}>Riwayat antrean selesai belum tersedia.</Text></View>}
+      {screen === "profile" && <View style={styles.profileCard}><View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></View><Text style={styles.sectionTitle}>{displayName}</Text><Text style={styles.muted}>{session.user.email}</Text><TouchableOpacity style={styles.outlineButton} onPress={() => void signOut()}><Text style={styles.outlineButtonText}>Keluar dari akun</Text></TouchableOpacity></View>}
+    </ScrollView>
+    <View style={styles.tabBar}>
+      <TabButton icon="⌂" label="Home" active={screen === "home"} onPress={() => setScreen("home")} />
+      <TabButton icon="▣" label="Antrian" active={screen === "services" || screen === "status"} onPress={() => setScreen(queue ? "status" : "services")} />
+      <TabButton icon="◷" label="Riwayat" active={screen === "history"} onPress={() => setScreen("history")} />
+      <TabButton icon="♙" label="Profil" active={screen === "profile"} onPress={() => setScreen("profile")} />
+    </View>
+  </SafeAreaView>;
 }
 
 function statusLabel(status: string) {
