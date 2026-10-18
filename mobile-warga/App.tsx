@@ -24,7 +24,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const colors = { ink: "#172554", muted: "#64748b", purple: "#6d4aff", pale: "#f4f1ff", line: "#e2e8f0", bg: "#f8fafc", green: "#15803d", amber: "#b45309" };
+const colors = { ink: "#171725", muted: "#777783", purple: "#6957e8", pale: "#eeebff", line: "#e8e7ee", bg: "#f7f7fb", green: "#15803d", amber: "#b45309" };
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -162,7 +162,6 @@ export default function App() {
     (service.description ?? "").toLowerCase().includes(serviceQuery.trim().toLowerCase())
   );
   const selected = services.find((service) => service.id === selectedService);
-  const queuePosition = queue ? Math.max(1, services.length ? 1 : 1) : 0;
   const queueStatus = queue?.status ?? "WAITING";
   const currentStep = queueStatus === "COMPLETED" ? 5 : queueStatus === "CALLED" || queueStatus === "SERVING" ? 3 : 2;
 
@@ -335,18 +334,40 @@ export default function App() {
 }
 
 function statusLabel(status: string) {
-  if (status === "WAITING") return "Menunggu giliran";
-  if (status === "CALLED") return "Sedang dipanggil";
+  if (status === "WAITING") return "Sedang menunggu";
+  if (status === "CALLED") return "Dipanggil ke loket";
   if (status === "SERVING") return "Sedang dilayani";
   if (status === "COMPLETED") return "Selesai";
   return "Dilewati";
+}
+
+function TabButton({ icon, label, active, onPress }: { icon: string; label: string; active: boolean; onPress: () => void }) {
+  return <TouchableOpacity onPress={onPress} style={styles.tabItem}>
+    <Text style={[styles.tabIcon, active && styles.tabActive]}>{icon}</Text>
+    <Text style={[styles.tabLabel, active && styles.tabActive]}>{label}</Text>
+  </TouchableOpacity>;
+}
+
+function QueueStep({ done, active, title, caption, last = false }: { done: boolean; active: boolean; title: string; caption: string; last?: boolean }) {
+  return <View style={styles.stepRow}>
+    <View style={styles.stepRail}>
+      <View style={[styles.queueStepIcon, done && styles.queueStepDone, active && styles.queueStepActive]}>
+        <Text style={[styles.queueStepIconText, (done || active) && styles.queueStepIconTextActive]}>{done ? "✓" : "•"}</Text>
+      </View>
+      {!last && <View style={styles.stepConnector} />}
+    </View>
+    <View style={[styles.stepCopy, last && { paddingBottom: 0 }]}>
+      <Text style={[styles.stepTitle, active && styles.stepTitleActive, !done && !active && styles.stepTitlePending]}>{title}</Text>
+      <Text style={styles.stepCaption}>{caption}</Text>
+    </View>
+  </View>;
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   authScreen: { flex: 1, backgroundColor: colors.bg, justifyContent: "center", padding: 22 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg, padding: 28, gap: 12 },
-  content: { padding: 20, paddingBottom: 42, gap: 16 },
+  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 14 },
   brand: { alignItems: "center", marginBottom: 28 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 4 },
   logo: { width: 52, height: 52, lineHeight: 52, borderRadius: 17, overflow: "hidden", textAlign: "center", backgroundColor: colors.purple, color: "#fff", fontSize: 25, fontWeight: "900" },
@@ -363,8 +384,8 @@ const styles = StyleSheet.create({
   queueDescription: { color: "#e2e8f0", fontSize: 12, textAlign: "center", marginTop: 8 },
   calledText: { color: "#fff", backgroundColor: "#7c2d12", overflow: "hidden", borderRadius: 12, padding: 12, marginTop: 14, fontWeight: "700", textAlign: "center" },
   input: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 14, color: colors.ink, backgroundColor: "#fff" },
-  primaryButton: { backgroundColor: colors.purple, borderRadius: 13, minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 4 },
-  primaryText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  primaryButton: { backgroundColor: colors.purple, borderRadius: 16, minHeight: 52, alignItems: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 4, elevation: 3 },
+  primaryText: { color: "#fff", fontWeight: "800", fontSize: 14, textAlign: "center" },
   disabled: { opacity: 0.45 },
   link: { color: colors.purple, fontWeight: "700", fontSize: 13, marginTop: 12 },
   serviceOption: { flexDirection: "row", alignItems: "center", gap: 12, padding: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.line },
@@ -381,4 +402,153 @@ const styles = StyleSheet.create({
   announcementBody: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   date: { color: colors.muted, fontSize: 11, marginTop: 2 },
   footer: { textAlign: "center", color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
+  topBar: { height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, backgroundColor: "#fff" },
+  brandMark: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.purple },
+  brandMarkText: { color: "#fff", fontSize: 24, fontWeight: "700" },
+  brandCopy: { flex: 1, paddingLeft: 10 },
+  brandEyebrow: { color: colors.muted, fontSize: 11 },
+  brandTitle: { color: colors.ink, fontSize: 19, fontWeight: "800" },
+  headerAction: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  headerActionText: { color: colors.ink, fontSize: 22 },
+  avatar: { width: 38, height: 38, borderRadius: 20, borderWidth: 2, borderColor: colors.pale, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  avatarText: { color: colors.purple, fontSize: 15, fontWeight: "800" },
+  heroCard: { backgroundColor: colors.purple, borderRadius: 24, padding: 18, gap: 16, elevation: 3 },
+  heroTop: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  heroTitle: { color: "#fff", fontSize: 22, fontWeight: "800", lineHeight: 28 },
+  heroSubtitle: { color: "#eeeaff", fontSize: 12, lineHeight: 18, marginTop: 5 },
+  livePill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 7 },
+  liveDot: { width: 8, height: 8, borderRadius: 5, backgroundColor: "#20c77a" },
+  liveText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  heroQueue: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 18, padding: 12, gap: 10 },
+  heroQueueIcon: { width: 44, height: 44, backgroundColor: colors.pale, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  heroQueueIconText: { color: colors.purple, fontSize: 23 },
+  heroQueueLabel: { color: colors.muted, fontSize: 10, letterSpacing: 1 },
+  heroQueueNumber: { color: colors.purple, fontSize: 21, fontWeight: "800", marginTop: 2 },
+  heroQueueMeta: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  heroQueueArrow: { color: colors.purple, fontSize: 27, paddingHorizontal: 5 },
+  quickAction: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 18, padding: 13, gap: 10, elevation: 2 },
+  quickIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  quickIconText: { color: colors.purple, fontSize: 21 },
+  quickTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  quickSubtitle: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  quickButton: { backgroundColor: colors.purple, borderRadius: 24, paddingHorizontal: 14, paddingVertical: 10 },
+  quickButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },
+  sectionTitle: { color: colors.ink, fontSize: 17, fontWeight: "800" },
+  sectionCaption: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  sectionCount: { color: colors.purple, fontSize: 11, fontWeight: "700" },
+  categoryRow: { paddingRight: 6, gap: 8 },
+  categoryCard: { width: 82, minHeight: 126, padding: 9, borderRadius: 18, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", elevation: 2 },
+  categoryIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  categoryIconText: { color: colors.purple, fontSize: 20 },
+  categoryName: { color: colors.ink, fontSize: 10, lineHeight: 14, fontWeight: "700", textAlign: "center", marginTop: 7 },
+  categoryHint: { color: colors.muted, fontSize: 9, marginTop: 4 },
+  emptyCard: { backgroundColor: "#fff", borderRadius: 18, padding: 17, gap: 8, borderWidth: 1, borderColor: colors.line },
+  announcementIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  announcementIconText: { color: colors.purple, fontWeight: "800" },
+  announcementMeta: { color: colors.purple, fontSize: 9, fontWeight: "700", marginBottom: 4 },
+  servicePreview: { backgroundColor: "#fff", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 10, elevation: 2 },
+  servicePreviewIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  servicePreviewTitle: { color: colors.ink, fontSize: 13, fontWeight: "700" },
+  servicePreviewMeta: { color: colors.muted, fontSize: 10, marginTop: 3 },
+  servicePreviewEstimate: { color: colors.purple, fontSize: 10, marginTop: 5 },
+  servicePreviewArrow: { color: "#b7b1d5", fontSize: 24 },
+  tipCard: { backgroundColor: "#e8e3ff", borderRadius: 16, padding: 13, flexDirection: "row", alignItems: "center", gap: 10 },
+  tipIcon: { width: 34, height: 34, borderRadius: 18, textAlign: "center", textAlignVertical: "center", overflow: "hidden", color: colors.purple, fontWeight: "800", fontSize: 18, backgroundColor: "#fff" },
+  tipText: { flex: 1, color: colors.ink, fontSize: 11, lineHeight: 17 },
+  selectionHero: { backgroundColor: colors.purple, borderRadius: 22, padding: 18, gap: 8, elevation: 3 },
+  selectionLive: { flexDirection: "row", alignItems: "center", gap: 7 },
+  selectionLiveText: { color: "#e7e2ff", fontSize: 11, fontWeight: "600" },
+  selectionTitle: { color: "#fff", fontSize: 21, fontWeight: "800", marginTop: 3 },
+  selectionSubtitle: { color: "#eeeaff", fontSize: 12, lineHeight: 18 },
+  stepper: { backgroundColor: "#fff", borderRadius: 18, padding: 10, flexDirection: "row", alignItems: "center", elevation: 1 },
+  step: { minWidth: 54, alignItems: "center", gap: 4 },
+  stepCircleActive: { width: 28, height: 28, borderRadius: 16, backgroundColor: colors.purple, color: "#fff", textAlign: "center", textAlignVertical: "center", overflow: "hidden", fontWeight: "800" },
+  stepActiveText: { color: colors.purple, fontSize: 10, fontWeight: "700" },
+  stepLine: { height: 1, flex: 1, backgroundColor: colors.line, marginHorizontal: 3 },
+  stepCircle: { width: 28, height: 28, borderRadius: 16, backgroundColor: "#eeeef2", color: colors.ink, textAlign: "center", textAlignVertical: "center", overflow: "hidden", fontWeight: "700" },
+  stepText: { color: colors.muted, fontSize: 10 },
+  searchBox: { minHeight: 48, borderRadius: 14, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", paddingHorizontal: 12, elevation: 1 },
+  searchIcon: { color: colors.muted, fontSize: 23, marginRight: 8 },
+  searchInput: { flex: 1, color: colors.ink, fontSize: 13, paddingVertical: 10 },
+  filterRow: { gap: 8, paddingVertical: 2 },
+  filterActive: { backgroundColor: colors.purple, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
+  filterActiveText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  filterChip: { backgroundColor: "#fff", borderRadius: 18, paddingHorizontal: 13, paddingVertical: 8 },
+  filterText: { color: colors.ink, fontSize: 11, fontWeight: "600" },
+  serviceChoice: { backgroundColor: "#fff", borderWidth: 1, borderColor: "transparent", borderRadius: 20, padding: 13, marginTop: 7, gap: 10, elevation: 2 },
+  serviceChoiceSelected: { borderColor: colors.purple, borderWidth: 2 },
+  serviceChoiceTop: { flexDirection: "row", alignItems: "center", gap: 9 },
+  serviceChoiceIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  serviceChoiceTitle: { color: colors.ink, fontWeight: "700", fontSize: 14 },
+  serviceChoiceDescription: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  serviceChoiceRadio: { color: "#d4d4d8", fontSize: 20 },
+  serviceChoiceRadioSelected: { color: colors.purple },
+  serviceChoiceFooter: { backgroundColor: colors.bg, borderRadius: 10, padding: 8, flexDirection: "row", justifyContent: "space-between" },
+  serviceChoiceMeta: { color: colors.muted, fontSize: 10 },
+  summaryCard: { backgroundColor: colors.pale, borderRadius: 20, padding: 15, gap: 5 },
+  summaryHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  summaryLabel: { color: colors.muted, fontSize: 10, fontWeight: "800" },
+  summaryPill: { color: "#fff", backgroundColor: colors.purple, fontSize: 10, fontWeight: "700", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, overflow: "hidden" },
+  divider: { height: 1, backgroundColor: "#dcd8f4", marginVertical: 5 },
+  summaryCaption: { color: colors.muted, fontSize: 10 },
+  summaryService: { color: colors.ink, fontSize: 16, fontWeight: "800" },
+  summaryEstimate: { color: colors.purple, fontSize: 11, marginTop: 2 },
+  documentTip: { backgroundColor: "#fff", borderRadius: 12, padding: 10, marginTop: 8 },
+  documentTipText: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  backLink: { alignItems: "center", paddingVertical: 10 },
+  backLinkText: { color: colors.muted, fontSize: 13, fontWeight: "600" },
+  realtimeRow: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 2, paddingBottom: 2 },
+  realtimeText: { color: colors.muted, flex: 1, fontSize: 12 },
+  updatePill: { backgroundColor: "#eeeef2", borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6 },
+  updatePillText: { color: colors.muted, fontSize: 10 },
+  statusCard: { backgroundColor: "#fff", borderRadius: 24, padding: 18, overflow: "hidden", elevation: 3 },
+  statusAccent: { position: "absolute", left: 0, right: 0, top: 0, height: 6, backgroundColor: colors.purple },
+  statusTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
+  statusEyebrow: { color: colors.purple, fontSize: 11, fontWeight: "800" },
+  statusNumber: { color: colors.ink, fontSize: 31, fontWeight: "900", marginTop: 2 },
+  statusPill: { backgroundColor: "#fff2df", borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 },
+  statusPillCalled: { backgroundColor: "#e7f8ee" },
+  statusPillText: { color: colors.amber, fontSize: 10, fontWeight: "800" },
+  statusService: { backgroundColor: "#f5f3f4", borderRadius: 15, padding: 12, marginTop: 12, flexDirection: "row", alignItems: "center", gap: 8 },
+  statusServiceIcon: { color: colors.purple, fontSize: 20 },
+  statusServiceName: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  statusServiceMeta: { color: colors.muted, fontSize: 11, marginTop: 3 },
+  statusMetrics: { flexDirection: "row", gap: 7, marginTop: 11 },
+  metric: { flex: 1, backgroundColor: "#f5f3f4", borderRadius: 14, paddingVertical: 10, paddingHorizontal: 5, alignItems: "center", minHeight: 82 },
+  metricLabel: { color: colors.muted, fontSize: 10 },
+  metricValue: { color: colors.purple, fontSize: 15, fontWeight: "800", marginTop: 5 },
+  metricHint: { color: "#9999a3", fontSize: 9, marginTop: 3, textAlign: "center" },
+  metricValueSmall: { color: colors.ink, fontSize: 10, fontWeight: "800", marginTop: 7, textAlign: "center" },
+  actionRow: { flexDirection: "row", gap: 8 },
+  ticketButton: { flex: 1, minHeight: 48, backgroundColor: "#e7e1ff", borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  ticketButtonText: { color: colors.purple, fontSize: 12, fontWeight: "800" },
+  cancelButton: { paddingHorizontal: 13, minHeight: 48, backgroundColor: "#fde8e7", borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  cancelButtonText: { color: "#c73c3c", fontSize: 11, fontWeight: "700" },
+  timelineCard: { backgroundColor: "#fff", borderRadius: 22, padding: 17, elevation: 2 },
+  timelineHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  timelineAlgorithm: { color: colors.purple, fontSize: 10 },
+  stepRow: { flexDirection: "row", minHeight: 58 },
+  stepRail: { width: 30, alignItems: "center" },
+  queueStepIcon: { width: 25, height: 25, borderRadius: 14, backgroundColor: "#eeeef2", alignItems: "center", justifyContent: "center", zIndex: 1 },
+  queueStepDone: { backgroundColor: "#20bf6b" },
+  queueStepActive: { backgroundColor: colors.purple },
+  queueStepIconText: { color: colors.muted, fontSize: 13, fontWeight: "800" },
+  queueStepIconTextActive: { color: "#fff" },
+  stepConnector: { position: "absolute", width: 2, top: 24, bottom: -1, backgroundColor: "#e4e1e5" },
+  stepCopy: { flex: 1, paddingLeft: 9, paddingBottom: 10 },
+  stepTitle: { color: colors.ink, fontSize: 13, fontWeight: "700" },
+  stepTitleActive: { color: colors.purple },
+  stepTitlePending: { color: "#9999a3", fontWeight: "500" },
+  stepCaption: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  profileCard: { alignItems: "center", backgroundColor: "#fff", borderRadius: 22, padding: 24, gap: 9 },
+  profileAvatar: { width: 68, height: 68, borderRadius: 36, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  profileAvatarText: { color: colors.purple, fontSize: 26, fontWeight: "800" },
+  outlineButton: { borderColor: colors.purple, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 13, marginTop: 12 },
+  outlineButtonText: { color: colors.purple, fontWeight: "700" },
+  tabBar: { height: 64, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0eff3", paddingHorizontal: 4 },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 2, minHeight: 50 },
+  tabIcon: { fontSize: 20, lineHeight: 22, color: colors.muted },
+  tabLabel: { color: colors.muted, fontSize: 10 },
+  tabActive: { color: colors.purple, fontWeight: "800" },
 });
