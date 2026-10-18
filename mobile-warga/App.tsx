@@ -330,7 +330,25 @@ export default function App() {
 
       {screen === "status" && !queue && <View style={styles.emptyCard}><Text style={styles.sectionTitle}>Belum ada antrean aktif</Text><Text style={styles.muted}>Pilih layanan untuk mengambil nomor antrean.</Text><TouchableOpacity style={styles.primaryButton} onPress={() => setScreen("services")}><Text style={styles.primaryText}>Pilih layanan</Text></TouchableOpacity></View>}
       {screen === "history" && <View style={styles.emptyCard}><Text style={styles.sectionTitle}>Riwayat antrean</Text><Text style={styles.muted}>Riwayat antrean selesai belum tersedia.</Text></View>}
-      {screen === "profile" && <View style={styles.profileCard}><View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></View><Text style={styles.sectionTitle}>{displayName}</Text><Text style={styles.muted}>{session.user.email}</Text><TouchableOpacity style={styles.outlineButton} onPress={() => void signOut()}><Text style={styles.outlineButtonText}>Keluar dari akun</Text></TouchableOpacity></View>}
+      {screen === "profile" && <>
+        <View style={styles.profileHero}>
+          <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></View>
+          <Text style={styles.profileName}>{displayName}</Text>
+          <Text style={styles.profileEmail}>{session.user.email}</Text>
+          <View style={styles.profileVerified}><View style={styles.profileVerifiedDot} /><Text style={styles.profileVerifiedText}>Akun warga Antrian Talawi</Text></View>
+        </View>
+        <View style={styles.profileSection}>
+          <Text style={styles.profileSectionTitle}>Informasi Akun</Text>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Text style={styles.profileInfoIconText}>♙</Text></View><View style={{ flex: 1 }}><Text style={styles.profileInfoLabel}>Nama lengkap</Text><Text style={styles.profileInfoValue}>{displayName}</Text></View></View>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Text style={styles.profileInfoIconText}>✉</Text></View><View style={{ flex: 1 }}><Text style={styles.profileInfoLabel}>Email terdaftar</Text><Text style={styles.profileInfoValue}>{session.user.email ?? "Tidak tersedia"}</Text></View></View>
+        </View>
+        <View style={styles.profileSection}>
+          <Text style={styles.profileSectionTitle}>Tentang Aplikasi</Text>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Text style={styles.profileInfoIconText}>◷</Text></View><View style={{ flex: 1 }}><Text style={styles.profileInfoValue}>Antrian Talawi</Text><Text style={styles.profileInfoLabel}>Layanan antrean digital Kecamatan Talawi</Text></View></View>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Text style={styles.profileInfoIconText}>✓</Text></View><View style={{ flex: 1 }}><Text style={styles.profileInfoValue}>Sistem FCFS</Text><Text style={styles.profileInfoLabel}>Urutan antrean berdasarkan waktu kedatangan</Text></View></View>
+        </View>
+        <TouchableOpacity style={styles.profileLogout} onPress={() => void signOut()}><Text style={styles.profileLogoutText}>↪  Keluar dari akun</Text></TouchableOpacity>
+      </>}
     </ScrollView>
     <View style={styles.tabBar}>
       <TabButton icon="⌂" label="Home" active={screen === "home"} onPress={() => setScreen("home")} />
@@ -549,6 +567,21 @@ const styles = StyleSheet.create({
   stepTitleActive: { color: colors.purple },
   stepTitlePending: { color: "#9999a3", fontWeight: "500" },
   stepCaption: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  profileHero: { backgroundColor: colors.purple, borderRadius: 24, padding: 24, alignItems: "center", gap: 8, marginBottom: 4 },
+  profileName: { color: "#fff", fontSize: 21, fontWeight: "800", textAlign: "center", marginTop: 4 },
+  profileEmail: { color: "#eeeaff", fontSize: 12, textAlign: "center" },
+  profileVerified: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.18)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, marginTop: 5 },
+  profileVerifiedDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#20c77a" },
+  profileVerifiedText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  profileSection: { backgroundColor: "#fff", borderRadius: 20, padding: 16, gap: 15, borderWidth: 1, borderColor: colors.line },
+  profileSectionTitle: { color: colors.ink, fontSize: 15, fontWeight: "800", marginBottom: 2 },
+  profileInfoRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  profileInfoIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  profileInfoIconText: { color: colors.purple, fontSize: 19, fontWeight: "700" },
+  profileInfoLabel: { color: colors.muted, fontSize: 11, lineHeight: 16 },
+  profileInfoValue: { color: colors.ink, fontSize: 13, fontWeight: "700", lineHeight: 19 },
+  profileLogout: { minHeight: 50, borderRadius: 15, backgroundColor: "#fff0ef", borderWidth: 1, borderColor: "#fbd5d2", alignItems: "center", justifyContent: "center", padding: 14 },
+  profileLogoutText: { color: "#c2413a", fontSize: 13, fontWeight: "800" },
   profileCard: { alignItems: "center", backgroundColor: "#fff", borderRadius: 22, padding: 24, gap: 9 },
   profileAvatar: { width: 68, height: 68, borderRadius: 36, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
   profileAvatarText: { color: colors.purple, fontSize: 26, fontWeight: "800" },
