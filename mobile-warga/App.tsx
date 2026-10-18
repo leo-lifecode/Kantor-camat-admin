@@ -33,6 +33,7 @@ export default function App() {
   const [registerMode, setRegisterMode] = useState(false);
   const [screen, setScreen] = useState<"home" | "services" | "status" | "history" | "profile">("home");
   const [serviceQuery, setServiceQuery] = useState("");
+  const [serviceCategory, setServiceCategory] = useState<"Semua" | "Kependudukan" | "Surat & Rekomendasi">("Semua");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -157,10 +158,14 @@ export default function App() {
 
   const displayName = String(session.user.user_metadata?.name ?? session.user.email?.split("@")[0] ?? "Warga");
   const firstName = displayName.split(" ")[0];
-  const filteredServices = services.filter((service) =>
-    service.name.toLowerCase().includes(serviceQuery.trim().toLowerCase()) ||
-    (service.description ?? "").toLowerCase().includes(serviceQuery.trim().toLowerCase())
-  );
+  const filteredServices = services.filter((service) => {
+    const query = serviceQuery.trim().toLowerCase();
+    const matchesQuery = service.name.toLowerCase().includes(query) || (service.description ?? "").toLowerCase().includes(query);
+    const serviceText = `${service.name} ${service.description ?? ""}`.toLowerCase();
+    const isPopulation = /ktp|kartu keluarga|kependudukan|akta|pindah|domisili|nik|identitas/.test(serviceText);
+    const matchesCategory = serviceCategory === "Semua" || (serviceCategory === "Kependudukan" ? isPopulation : !isPopulation);
+    return matchesQuery && matchesCategory;
+  });
   const selected = services.find((service) => service.id === selectedService);
   const queueService = services.find((service) => service.name === queue?.service?.name);
   const queueStatus = queue?.status ?? "WAITING";
@@ -267,9 +272,11 @@ export default function App() {
         </View>
         <View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput value={serviceQuery} onChangeText={setServiceQuery} placeholder="Cari layanan surat, KTP, KK..." placeholderTextColor="#9999A3" style={styles.searchInput} /></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <View style={styles.filterActive}><Text style={styles.filterActiveText}>Semua</Text></View>
-          <View style={styles.filterChip}><Text style={styles.filterText}>Kependudukan</Text></View>
-          <View style={styles.filterChip}><Text style={styles.filterText}>Surat & Rekomendasi</Text></View>
+          {(["Semua", "Kependudukan", "Surat & Rekomendasi"] as const).map((category) => (
+            <TouchableOpacity key={category} onPress={() => setServiceCategory(category)} style={serviceCategory === category ? styles.filterActive : styles.filterChip}>
+              <Text style={serviceCategory === category ? styles.filterActiveText : styles.filterText}>{category}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
         {filteredServices.map((service, index) => <TouchableOpacity key={service.id} activeOpacity={0.88} onPress={() => setSelectedService(service.id)} style={[styles.serviceChoice, selectedService === service.id && styles.serviceChoiceSelected]}>
           <View style={styles.serviceChoiceTop}>
@@ -304,12 +311,15 @@ export default function App() {
           <View style={styles.statusTop}><View><Text style={styles.statusEyebrow}>NOMOR ANTREAN ANDA</Text><Text style={styles.statusNumber}>{queue.queue_number}</Text></View><View style={[styles.statusPill, queue.status === "CALLED" || queue.status === "SERVING" ? styles.statusPillCalled : null]}><Text style={styles.statusPillText}>●  {statusLabel(queue.status)}</Text></View></View>
           <View style={styles.statusService}><Text style={styles.statusServiceIcon}>▤</Text><View style={{ flex: 1 }}><Text style={styles.statusServiceName}>{queue.service?.name ?? "Layanan kecamatan"}</Text><Text style={styles.statusServiceMeta}>Kantor Camat Talawi</Text></View></View>
           <View style={styles.statusMetrics}>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Nomor</Text><Text style={styles.metricValue}>{queue.queue_number}</Text><Text style={styles.metricHint}>tiket aktif</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Estimasi</Text><Text style={styles.metricValue}>{queueService?.estimated_duration ?? "—"}</Text><Text style={styles.metricHint}>menit / orang</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Status</Text><Text style={styles.metricValueSmall}>{statusLabel(queue.status)}</Text><Text style={styles.metricHint}>diperbarui live</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Nomor antrean</Text><Text style={styles.metricValue}>{queue.queue_number}</Text><Text style={styles.metricHint}>tiket Anda</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Estimasi</Text><Text style={styles.metricValue}>{queueService?.estimated_duration ?? "—"}</Text><Text style={styles.metricHint}>menit layanan</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Status</Text><Text style={styles.metricValueSmall}>{statusLabel(queue.status)}</Text><Text style={styles.metricHint}>real-time</Text></View>
           </View>
         </View>
-        <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan Tiket Digital</Text></TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan QR Tiket</Text></TouchableOpacity>
+          <View style={styles.statusCancelStub}><Text style={styles.statusCancelText}>ⓧ</Text><Text style={styles.statusCancelText}>Batal</Text></View>
+        </View>
                 <View style={styles.timelineCard}>
           <View style={styles.timelineHeading}><Text style={styles.sectionTitle}>Tahapan pelayanan</Text><Text style={styles.timelineAlgorithm}>Algoritma FCFS</Text></View>
           <QueueStep done={currentStep >= 1} active={currentStep === 1} title="Tiket dibuat" caption="Antrean tercatat pada sistem" />
@@ -524,6 +534,8 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: "row", gap: 8 },
   ticketButton: { flex: 1, minHeight: 48, backgroundColor: "#e7e1ff", borderRadius: 15, alignItems: "center", justifyContent: "center" },
   ticketButtonText: { color: colors.purple, fontSize: 12, fontWeight: "800" },
+  statusCancelStub: { minHeight: 48, paddingHorizontal: 12, backgroundColor: "#fde8e7", borderRadius: 15, alignItems: "center", justifyContent: "center", gap: 2 },
+  statusCancelText: { color: "#c73c3c", fontSize: 11, fontWeight: "700" },
   cancelButton: { paddingHorizontal: 13, minHeight: 48, backgroundColor: "#fde8e7", borderRadius: 15, alignItems: "center", justifyContent: "center" },
   cancelButtonText: { color: "#c73c3c", fontSize: 11, fontWeight: "700" },
   timelineCard: { backgroundColor: "#fff", borderRadius: 22, padding: 17, elevation: 2 },
