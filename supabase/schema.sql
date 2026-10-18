@@ -28,7 +28,7 @@ create table if not exists public.queues (
   queue_number text not null unique,
   user_id uuid not null references public.profiles(id),
   service_id uuid not null references public.services(id),
-  status text not null default 'WAITING' check (status in ('WAITING','CALLED','SERVING','COMPLETED','SKIPPED')),
+  status text not null default 'WAITING' check (status in ('WAITING','CALLED','SERVING','COMPLETED','SKIPPED','CANCELLED')),
   arrival_time timestamptz not null default clock_timestamp(),
   called_time timestamptz,
   start_service_time timestamptz,
@@ -199,3 +199,43 @@ on conflict (code) do nothing;
 
 -- Important: assign ADMIN role manually to a trusted profile after account registration.
 -- Never expose the Supabase service_role key in frontend code.
+
+
+-- Citizens can cancel only their own queue while it is still waiting.
+create or replace function public.cancel_own_queue(p_queue_id uuid)
+returns public.queues
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  q public.queues;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select * into q
+  from public.queues
+  where id = p_queue_id and user_id = auth.uid()
+  for update;
+
+  if q.id is null then
+    raise exception 'Queue not found or not owned by current user';
+  end if;
+
+  if q.status <> 'WAITING' then
+    raise exception 'Only waiting queues can be cancelled';
+  end if;
+
+  update public.queues
+  set status = 'CANCELLED', updated_at = clock_timestamp()
+  where id = p_queue_id
+  returning * into q;
+
+  return q;
+end;
+$$;
+
+revoke all on function public.cancel_own_queue(uuid) from public;
+grant execute on function public.cancel_own_queue(uuid) to authenticated;
