@@ -143,6 +143,26 @@ export default function App() {
     finally { setBusy(false); }
   }
 
+  async function cancelQueue() {
+    if (!supabase || !queue || queue.status !== "WAITING") return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("cancel_own_queue", { p_queue_id: queue.id });
+      if (error) throw error;
+      lastQueueStatus.current = null;
+      setQueue(null);
+      setBanner(`Antrean ${queue.queue_number} berhasil dibatalkan.`);
+      setScreen("status");
+      if (session?.user.id) await loadData(session.user.id);
+      Alert.alert("Antrean dibatalkan", "Nomor antrean Anda sudah dibatalkan. Jika masih membutuhkan layanan, ambil nomor antrean baru.");
+    } catch (error) {
+      Alert.alert("Gagal membatalkan antrean", error instanceof Error ? error.message : "Terjadi kesalahan. Coba lagi.");
+      if (session?.user.id) await loadData(session.user.id);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signOut() { if (supabase) await supabase.auth.signOut(); setSession(null); }
 
   async function refresh() {
@@ -317,6 +337,19 @@ export default function App() {
           </View>
         </View>
         <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan Tiket Digital</Text></TouchableOpacity>
+        {queue.status === "WAITING" && <TouchableOpacity
+          style={[styles.cancelQueueButton, busy && styles.disabled]}
+          disabled={busy}
+          onPress={() => Alert.alert(
+            "Batalkan antrean?",
+            `Nomor ${queue.queue_number} akan dibatalkan dan tidak dapat digunakan kembali. Anda perlu mengambil nomor baru jika berubah pikiran.`,
+            [
+              { text: "Kembali", style: "cancel" },
+              { text: "Ya, batalkan", style: "destructive", onPress: () => void cancelQueue() },
+            ],
+          )}>
+          {busy ? <ActivityIndicator color="#c2413a" /> : <Text style={styles.cancelQueueButtonText}>Batalkan Antrean</Text>}
+        </TouchableOpacity>}
                 <View style={styles.timelineCard}>
           <View style={styles.timelineHeading}><Text style={styles.sectionTitle}>Tahapan pelayanan</Text><Text style={styles.timelineAlgorithm}>Algoritma FCFS</Text></View>
           <QueueStep done={currentStep >= 1} active={currentStep === 1} title="Tiket dibuat" caption="Antrean tercatat pada sistem" />
@@ -364,7 +397,9 @@ function statusLabel(status: string) {
   if (status === "CALLED") return "Dipanggil ke loket";
   if (status === "SERVING") return "Sedang dilayani";
   if (status === "COMPLETED") return "Selesai";
-  return "Dilewati";
+  if (status === "CANCELLED") return "Dibatalkan";
+  if (status === "SKIPPED") return "Dilewati";
+  return status;
 }
 
 function TabButton({ icon, label, active, onPress }: { icon: string; label: string; active: boolean; onPress: () => void }) {
@@ -551,6 +586,8 @@ const styles = StyleSheet.create({
   ticketButtonText: { color: colors.purple, fontSize: 12, fontWeight: "800" },
   cancelButton: { paddingHorizontal: 13, minHeight: 48, backgroundColor: "#fde8e7", borderRadius: 15, alignItems: "center", justifyContent: "center" },
   cancelButtonText: { color: "#c73c3c", fontSize: 11, fontWeight: "700" },
+  cancelQueueButton: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: "#f3b9b5", backgroundColor: "#fff7f6", alignItems: "center", justifyContent: "center", paddingHorizontal: 16, marginTop: 9 },
+  cancelQueueButtonText: { color: "#c2413a", fontSize: 12, fontWeight: "800" },
   timelineCard: { backgroundColor: "#fff", borderRadius: 22, padding: 17, elevation: 2 },
   timelineHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   timelineAlgorithm: { color: colors.purple, fontSize: 10 },
