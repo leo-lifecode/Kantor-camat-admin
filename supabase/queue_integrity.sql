@@ -19,7 +19,7 @@ begin
 end;
 $$;
 
-create unique index if not exists queues_one_active_queue_per_user_idx
+create unique index if not exists queues_one_active_per_user_idx
   on public.queues(user_id)
   where status in ('WAITING', 'CALLED', 'SERVING');
 
@@ -39,8 +39,15 @@ begin
     raise exception 'Authentication required';
   end if;
 
+  if not exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'WARGA'
+  ) then
+    raise exception 'Only WARGA accounts can create a queue';
+  end if;
+
   -- Serialize queue creation attempts by this user, including concurrent taps.
-  perform pg_advisory_xact_lock(hashtext('talawi_create_queue'), hashtext(auth.uid()::text));
+  perform pg_advisory_xact_lock(hashtext('talawi_create_queue_' || auth.uid()::text));
 
   if exists (
     select 1 from public.queues
