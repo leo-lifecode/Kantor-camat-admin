@@ -316,10 +316,7 @@ export default function App() {
             <View style={styles.metric}><Text style={styles.metricLabel}>Status</Text><Text style={styles.metricValueSmall}>{statusLabel(queue.status)}</Text><Text style={styles.metricHint}>real-time</Text></View>
           </View>
         </View>
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan QR Tiket</Text></TouchableOpacity>
-          <View style={styles.statusCancelStub}><Text style={styles.statusCancelText}>ⓧ</Text><Text style={styles.statusCancelText}>Batal</Text></View>
-        </View>
+        <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan Tiket Digital</Text></TouchableOpacity>
                 <View style={styles.timelineCard}>
           <View style={styles.timelineHeading}><Text style={styles.sectionTitle}>Tahapan pelayanan</Text><Text style={styles.timelineAlgorithm}>Algoritma FCFS</Text></View>
           <QueueStep done={currentStep >= 1} active={currentStep === 1} title="Tiket dibuat" caption="Antrean tercatat pada sistem" />
@@ -534,8 +531,6 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: "row", gap: 8 },
   ticketButton: { flex: 1, minHeight: 48, backgroundColor: "#e7e1ff", borderRadius: 15, alignItems: "center", justifyContent: "center" },
   ticketButtonText: { color: colors.purple, fontSize: 12, fontWeight: "800" },
-  statusCancelStub: { minHeight: 48, paddingHorizontal: 12, backgroundColor: "#fde8e7", borderRadius: 15, alignItems: "center", justifyContent: "center", gap: 2 },
-  statusCancelText: { color: "#c73c3c", fontSize: 11, fontWeight: "700" },
   cancelButton: { paddingHorizontal: 13, minHeight: 48, backgroundColor: "#fde8e7", borderRadius: 15, alignItems: "center", justifyContent: "center" },
   cancelButtonText: { color: "#c73c3c", fontSize: 11, fontWeight: "700" },
   timelineCard: { backgroundColor: "#fff", borderRadius: 22, padding: 17, elevation: 2 },
