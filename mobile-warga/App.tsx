@@ -198,7 +198,8 @@ export default function App() {
   const selected = services.find((service) => service.id === selectedService);
   const queueService = services.find((service) => service.name === queue?.service?.name);
   const queueStatus = queue?.status ?? "WAITING";
-  const currentStep = queueStatus === "COMPLETED" ? 5 : queueStatus === "CALLED" || queueStatus === "SERVING" ? 3 : 2;
+  // 2 = menunggu, 3 = dipanggil ke loket, 4 = sedang dilayani (verifikasi dokumen), 5 = selesai.
+  const currentStep: number = queueStatus === "COMPLETED" ? 5 : queueStatus === "SERVING" ? 4 : queueStatus === "CALLED" ? 3 : 2;
 
   return <SafeAreaView style={styles.screen}>
     <ExpoStatusBar style="dark" />
