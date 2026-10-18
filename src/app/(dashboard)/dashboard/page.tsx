@@ -15,6 +15,8 @@ import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function DashboardPage() {
   const { queues, dataMode } = useDemoQueues();
+  // Cancelled tickets are retained in history, but do not count as active/system queue totals.
+  const countedQueues = queues.filter(queue => queue.status !== "CANCELLED");
   const waiting = queues.filter(queue => queue.status === "WAITING").length;
   const active = queues.find(queue => queue.status === "SERVING");
   const completed = queues.filter(queue => queue.status === "COMPLETED").length;
@@ -29,7 +31,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard title="Total Antrian" value={queues.length} description={dataMode === "supabase" ? "Data database" : "Data contoh"} icon={Users} />
+        <StatCard title="Total Antrian" value={countedQueues.length} description={dataMode === "supabase" ? "Data database, tidak termasuk antrean batal" : "Data contoh"} icon={Users} />
         <StatCard title="Menunggu" value={waiting} description="Belum dipanggil" icon={Clock3} />
         <StatCard title="Sedang Dilayani" value={active ? 1 : 0} description={active ? `Nomor ${active.number}` : "Tidak ada yang dilayani"} icon={PlayCircle} />
         <StatCard title="Selesai" value={completed} description="Antrian selesai" icon={CheckCircle2} />
