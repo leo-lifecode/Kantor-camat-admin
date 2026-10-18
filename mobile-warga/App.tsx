@@ -71,7 +71,7 @@ export default function App() {
       }
       lastQueueStatus.current = nextQueue?.status ?? null;
       setQueue(nextQueue);
-      setScreen(nextQueue ? "status" : "home");
+      if (nextQueue) setScreen("status");
     }
     if (announcementResult.error) setBanner(announcementResult.error.message);
     else setAnnouncements((announcementResult.data ?? []) as Announcement[]);
@@ -162,6 +162,7 @@ export default function App() {
     (service.description ?? "").toLowerCase().includes(serviceQuery.trim().toLowerCase())
   );
   const selected = services.find((service) => service.id === selectedService);
+  const queueService = services.find((service) => service.name === queue?.service?.name);
   const queueStatus = queue?.status ?? "WAITING";
   const currentStep = queueStatus === "COMPLETED" ? 5 : queueStatus === "CALLED" || queueStatus === "SERVING" ? 3 : 2;
 
@@ -304,12 +305,12 @@ export default function App() {
           <View style={styles.statusService}><Text style={styles.statusServiceIcon}>▤</Text><View style={{ flex: 1 }}><Text style={styles.statusServiceName}>{queue.service?.name ?? "Layanan kecamatan"}</Text><Text style={styles.statusServiceMeta}>Kantor Camat Talawi</Text></View></View>
           <View style={styles.statusMetrics}>
             <View style={styles.metric}><Text style={styles.metricLabel}>Nomor</Text><Text style={styles.metricValue}>{queue.queue_number}</Text><Text style={styles.metricHint}>tiket aktif</Text></View>
-            <View style={styles.metric}><Text style={styles.metricLabel}>Estimasi</Text><Text style={styles.metricValue}>{selected?.estimated_duration ?? "—"}</Text><Text style={styles.metricHint}>menit / orang</Text></View>
+            <View style={styles.metric}><Text style={styles.metricLabel}>Estimasi</Text><Text style={styles.metricValue}>{queueService?.estimated_duration ?? "—"}</Text><Text style={styles.metricHint}>menit / orang</Text></View>
             <View style={styles.metric}><Text style={styles.metricLabel}>Status</Text><Text style={styles.metricValueSmall}>{statusLabel(queue.status)}</Text><Text style={styles.metricHint}>diperbarui live</Text></View>
           </View>
         </View>
-        <View style={styles.actionRow}><TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan Tiket</Text></TouchableOpacity><TouchableOpacity style={styles.cancelButton} onPress={() => Alert.alert("Batalkan antrean?", "Pembatalan antrean belum tersedia di aplikasi.", [{ text: "Tutup" }])}><Text style={styles.cancelButtonText}>⊗  Batal</Text></TouchableOpacity></View>
-        <View style={styles.timelineCard}>
+        <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}>▦  Tampilkan Tiket Digital</Text></TouchableOpacity>
+                <View style={styles.timelineCard}>
           <View style={styles.timelineHeading}><Text style={styles.sectionTitle}>Tahapan pelayanan</Text><Text style={styles.timelineAlgorithm}>Algoritma FCFS</Text></View>
           <QueueStep done={currentStep >= 1} active={currentStep === 1} title="Tiket dibuat" caption="Antrean tercatat pada sistem" />
           <QueueStep done={currentStep >= 2} active={currentStep === 2} title="Masuk daftar tunggu" caption="Urutan berdasarkan waktu kedatangan" />
