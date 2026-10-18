@@ -15,7 +15,12 @@ type Queue = {
   called_time: string | null; service?: { name: string } | null;
 };
 type Announcement = { id: string; title: string; content: string; category: string; image_url: string | null; published_at: string | null };
-type QueueRow = { id: string; queue_number: string; status: string; arrival_time: string; called_time: string | null; services: { name: string } | { name: string }[] | null };;
+type QueueRow = { id: string; queue_number: string; status: string; arrival_time: string; called_time: string | null; services: { name: string } | { name: string }[] | null };
+type HistoryQueue = {
+  id: string; queue_number: string; status: string; arrival_time: string;
+  called_time: string | null; start_service_time: string | null; completion_time: string | null;
+  services: { name: string } | { name: string }[] | null;
+};
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -40,6 +45,8 @@ export default function App() {
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState("");
   const [queue, setQueue] = useState<Queue | null>(null);
+  const [queueHistory, setQueueHistory] = useState<HistoryQueue[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [banner, setBanner] = useState("");
@@ -47,10 +54,11 @@ export default function App() {
 
   const loadData = useCallback(async (userId: string) => {
     if (!supabase) return;
-    const [serviceResult, queueResult, announcementResult] = await Promise.all([
+    const [serviceResult, queueResult, announcementResult, historyResult] = await Promise.all([
       supabase.from("services").select("id,name,description,estimated_duration").eq("is_active", true).order("name"),
       supabase.from("queues").select("id,queue_number,status,arrival_time,called_time,services(name)").eq("user_id", userId).in("status", ["WAITING", "CALLED", "SERVING"]).order("arrival_time", { ascending: true }).limit(1).maybeSingle(),
       supabase.from("announcements").select("id,title,content,category,image_url,published_at").eq("is_active", true).order("published_at", { ascending: false }).limit(10),
+      supabase.from("queues").select("id,queue_number,status,arrival_time,called_time,start_service_time,completion_time,services(name)").eq("user_id", userId).in("status", ["COMPLETED", "SKIPPED", "CANCELLED"]).order("arrival_time", { ascending: false }).limit(30),
     ]);
     if (serviceResult.error) setBanner(serviceResult.error.message);
     else {
@@ -76,6 +84,8 @@ export default function App() {
     }
     if (announcementResult.error) setBanner(announcementResult.error.message);
     else setAnnouncements((announcementResult.data ?? []) as Announcement[]);
+    if (historyResult.error) setBanner(historyResult.error.message);
+    else setQueueHistory((historyResult.data ?? []) as HistoryQueue[]);
   }, [selectedService]);
 
   useEffect(() => {
@@ -362,7 +372,47 @@ export default function App() {
       </>}
 
       {screen === "status" && !queue && <View style={styles.emptyCard}><Text style={styles.sectionTitle}>Belum ada antrean aktif</Text><Text style={styles.muted}>Pilih layanan untuk mengambil nomor antrean.</Text><TouchableOpacity style={styles.primaryButton} onPress={() => setScreen("services")}><Text style={styles.primaryText}>Pilih layanan</Text></TouchableOpacity></View>}
-      {screen === "history" && <View style={styles.emptyCard}><Text style={styles.sectionTitle}>Riwayat antrean</Text><Text style={styles.muted}>Riwayat antrean selesai belum tersedia.</Text></View>}
+      {screen === "history" && <>
+        <View style={styles.historyHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Riwayat antrean</Text>
+            <Text style={styles.sectionCaption}>30 antrean terakhir yang selesai, dilewati, atau dibatalkan</Text>
+          </View>
+          <TouchableOpacity style={styles.historyRefresh} disabled={refreshing} onPress={() => void refresh()}>
+            <Text style={styles.historyRefreshText}>↻ Segarkan</Text>
+          </TouchableOpacity>
+        </View>
+        {historyLoading && <View style={styles.emptyCard}><ActivityIndicator color={colors.purple} /><Text style={styles.muted}>Memuat riwayat...</Text></View>}
+        {!historyLoading && queueHistory.length === 0 && <View style={styles.emptyCard}>
+          <Text style={styles.historyEmptyIcon}>◷</Text>
+          <Text style={styles.sectionTitle}>Belum ada riwayat</Text>
+          <Text style={styles.muted}>Antrean yang selesai, dilewati, atau dibatalkan akan muncul di sini.</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={() => setScreen(queue ? "status" : "services")}><Text style={styles.primaryText}>{queue ? "Lihat antrean aktif" : "Ambil antrean"}</Text></TouchableOpacity>
+        </View>}
+        {queueHistory.map((item) => {
+          const itemService = Array.isArray(item.services) ? item.services[0]?.name : item.services?.name;
+          const date = new Date(item.arrival_time);
+          const endTime = item.completion_time ?? item.called_time;
+          const statusColor = item.status === "COMPLETED" ? colors.green : item.status === "CANCELLED" ? "#c2413a" : colors.amber;
+          return <View key={item.id} style={styles.historyCard}>
+            <View style={styles.historyCardTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.historyQueueNumber}>{item.queue_number}</Text>
+                <Text style={styles.historyService}>{itemService ?? "Layanan kecamatan"}</Text>
+              </View>
+              <View style={[styles.historyStatusPill, { backgroundColor: item.status === "COMPLETED" ? "#e8f8ee" : item.status === "CANCELLED" ? "#fff0ef" : "#fff3df" }]}>
+                <Text style={[styles.historyStatusText, { color: statusColor }]}>{statusLabel(item.status)}</Text>
+              </View>
+            </View>
+            <View style={styles.historyDivider} />
+            <Text style={styles.historyMeta}>Diambil: {date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} • {date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</Text>
+            {item.start_service_time && <Text style={styles.historyMeta}>Mulai dilayani: {new Date(item.start_service_time).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</Text>}
+            {item.completion_time && <Text style={styles.historyMeta}>Selesai: {new Date(item.completion_time).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</Text>}
+            {item.status === "CANCELLED" && <Text style={styles.historyNote}>Antrean dibatalkan oleh warga.</Text>}
+            {item.status === "SKIPPED" && <Text style={styles.historyNote}>Antrean dilewati oleh petugas.</Text>}
+          </View>;
+        })}
+      </>}
       {screen === "profile" && <>
         <View style={styles.profileHero}>
           <View style={styles.profileAvatar}><Text style={styles.profileAvatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></View>
@@ -505,6 +555,19 @@ const styles = StyleSheet.create({
   categoryName: { color: colors.ink, fontSize: 10, lineHeight: 14, fontWeight: "700", textAlign: "center", marginTop: 7 },
   categoryHint: { color: colors.muted, fontSize: 9, marginTop: 4 },
   emptyCard: { backgroundColor: "#fff", borderRadius: 18, padding: 17, gap: 8, borderWidth: 1, borderColor: colors.line },
+  historyHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 2 },
+  historyRefresh: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: colors.pale },
+  historyRefreshText: { color: colors.purple, fontSize: 11, fontWeight: "800" },
+  historyEmptyIcon: { color: colors.purple, fontSize: 34, marginBottom: 2 },
+  historyCard: { backgroundColor: "#fff", borderRadius: 18, padding: 15, borderWidth: 1, borderColor: colors.line, gap: 6 },
+  historyCardTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  historyQueueNumber: { color: colors.ink, fontSize: 21, fontWeight: "900" },
+  historyService: { color: colors.muted, fontSize: 12, marginTop: 3 },
+  historyStatusPill: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12 },
+  historyStatusText: { fontSize: 10, fontWeight: "800" },
+  historyDivider: { height: 1, backgroundColor: colors.line, marginVertical: 4 },
+  historyMeta: { color: colors.muted, fontSize: 11, lineHeight: 17 },
+  historyNote: { color: colors.ink, fontSize: 11, fontWeight: "600", marginTop: 2 },
   announcementIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
   announcementIconText: { color: colors.purple, fontWeight: "800" },
   announcementMeta: { color: colors.purple, fontSize: 9, fontWeight: "700", marginBottom: 4 },
