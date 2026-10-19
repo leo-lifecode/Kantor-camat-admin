@@ -140,6 +140,20 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Mode demo harus menegakkan aturan yang sama dengan database: loket tunggal dan urutan FCFS.
+    if (status === "CALLED") {
+      const busyQueue = queues.find((item) => item.status === "CALLED" || item.status === "SERVING");
+      if (busyQueue) {
+        setNotice(`Loket masih aktif pada ${busyQueue.number}. Selesaikan antrian ini sebelum memanggil berikutnya.`);
+        return;
+      }
+      const oldestWaiting = [...queues].filter((item) => item.status === "WAITING").sort((a, b) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number))[0];
+      if (oldestWaiting && oldestWaiting.number !== number) {
+        setNotice(`FCFS: ${oldestWaiting.number} harus dipanggil lebih dahulu.`);
+        return;
+      }
+    }
+
     setQueues((current) => current.map((queue) => queue.number === number ? {
       ...queue,
       status,

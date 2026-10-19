@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarDays, Filter, Search, Plus } from "lucide-react";
 import QueueTable from "@/components/queue/QueueTable";
 import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
@@ -8,7 +8,10 @@ import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 export default function QueuePage() {
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
-  const [date, setDate] = useState(() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; });
+  // Tanggal hari ini diisi setelah mount. Halaman ini dibuat statis saat build, jadi menghitung tanggal
+  // saat render membuat HTML (tanggal build) berbeda dari browser (tanggal hari ini) -> error hidrasi React #418.
+  const [date, setDate] = useState("");
+  useEffect(() => { const now = new Date(); setDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`); }, []);
   const { callNext, notice } = useDemoQueues();
 
   return (
