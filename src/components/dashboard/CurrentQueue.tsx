@@ -4,7 +4,7 @@ import { CheckCircle2, PlayCircle, SkipForward } from "lucide-react";
 import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function CurrentQueue() {
-  const { currentQueue, queues, callNext, updateStatus, notice } = useDemoQueues();
+  const { currentQueue, queues, callNext, updateStatus, notice, dataMode, ready } = useDemoQueues();
   const waitingCount = queues.filter((queue) => queue.status === "WAITING").length;
   const active = currentQueue;
 
@@ -18,7 +18,7 @@ export default function CurrentQueue() {
         {active && <p className="mt-1 text-xs text-gray-500">{active.name}</p>}
       </div>
       <div className="mt-5 flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-4">
-        <div><p className="text-xs text-gray-500">Status loket</p><p className={`mt-1 text-sm font-semibold ${!active ? "text-gray-500" : active.status === "SERVING" ? "text-green-600" : "text-amber-600"}`}>{!active ? "Kosong" : active.status === "SERVING" ? "Sedang dilayani" : "Dipanggil"}</p><p className="mt-1 text-xs text-gray-500">{waitingCount} antrian menunggu</p></div>
+        <div><p className="text-xs text-gray-500">Status loket</p><p className={`mt-1 text-sm font-semibold ${!active ? "text-gray-500" : active.status === "SERVING" ? "text-green-600" : "text-amber-600"}`}>{!ready ? "Memuat data…" : !active ? "Kosong" : active.status === "SERVING" ? "Sedang dilayani" : "Dipanggil"}</p><p className="mt-1 text-xs text-gray-500">{ready ? `${waitingCount} antrian menunggu` : "—"}</p></div>
         <CheckCircle2 size={22} className={!active ? "text-gray-300" : "text-green-500"} />
       </div>
       {notice && <p role="status" className="mt-4 rounded-xl bg-purple-50 p-3 text-xs leading-5 text-purple-800">{notice}</p>}
@@ -26,7 +26,7 @@ export default function CurrentQueue() {
         <button onClick={() => active && updateStatus(active.number, "COMPLETED")} disabled={active?.status !== "SERVING"} className="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={17} />Selesaikan</button>
         <button onClick={callNext} disabled={!!active || waitingCount === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-3 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"><SkipForward size={17} />Panggil Berikutnya</button>
       </div>
-      <p className="mt-3 text-center text-[11px] text-gray-400">Mode demo · status tersinkron antarhalaman, belum tersimpan ke database</p>
+      <p className="mt-3 text-center text-[11px] text-gray-400">{dataMode === "supabase" ? "Terhubung ke Supabase · status tersimpan di database dan diperbarui otomatis" : "Mode demo · status tersinkron antarhalaman, belum tersimpan ke database"}</p>
     </div>
   );
 }

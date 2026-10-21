@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { officeDateKey, officeTime } from "@/lib/queue-time";
 
 export type QueueStatus = "WAITING" | "CALLED" | "SERVING" | "COMPLETED" | "SKIPPED" | "CANCELLED";
 export type DemoQueue = {
@@ -15,6 +16,10 @@ export type DemoQueue = {
   called?: string;
   started?: string;
   completed?: string;
+  /** Detik, dihitung database saat layanan dimulai (waiting_time). */
+  waitingSeconds?: number | null;
+  /** Detik, dihitung database saat layanan selesai (service_duration). */
+  serviceSeconds?: number | null;
 };
 
 const initialQueues: DemoQueue[] = [
@@ -34,20 +39,23 @@ type QueueContextValue = {
   notice: string;
   clearNotice: () => void;
   dataMode: "demo" | "supabase";
+  /** false selama data database pertama kali dimuat. Mode demo selalu true. */
+  ready: boolean;
+  /**
+   * Tanggal hari ini menurut WIB (YYYY-MM-DD). Kosong sebelum komponen terpasang di browser, supaya HTML
+   * statis sama dengan render pertama browser (menghindari error hidrasi React #418).
+   */
+  today: string;
 };
 
 const QueueContext = createContext<QueueContextValue | null>(null);
 const supabaseConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-function formatTime(value?: string | null) {
-  if (!value) return undefined;
-  return new Date(value).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-}
-
 type QueueRelation = { name: string } | { name: string }[] | null;
 type QueueDatabaseRow = {
   id: string; queue_number: string; status: QueueStatus; arrival_time: string;
   called_time: string | null; start_service_time: string | null; completion_time: string | null;
+  waiting_time?: number | null; service_duration?: number | null;
   profiles?: QueueRelation; services?: QueueRelation;
 };
 
@@ -60,52 +68,91 @@ function mapDatabaseQueue(row: QueueDatabaseRow): DemoQueue {
     number: row.queue_number,
     name: profile?.name ?? "Warga",
     service: service?.name ?? "Layanan",
-    arrival: formatTime(row.arrival_time) ?? "--:--:--",
-    date: `${arrival.getFullYear()}-${String(arrival.getMonth() + 1).padStart(2, "0")}-${String(arrival.getDate()).padStart(2, "0")}`,
+    arrival: officeTime(row.arrival_time) ?? "--:--:--",
+    date: officeDateKey(arrival),
     status: row.status,
-    called: formatTime(row.called_time),
-    started: formatTime(row.start_service_time),
-    completed: formatTime(row.completion_time),
+    called: officeTime(row.called_time),
+    started: officeTime(row.start_service_time),
+    completed: officeTime(row.completion_time),
+    waitingSeconds: row.waiting_time ?? null,
+    serviceSeconds: row.service_duration ?? null,
   };
 }
 
+// Urutan FCFS: tanggal, lalu jam kedatangan, lalu nomor. Database memakai arrival_time dan id.
+const byArrival = (a: DemoQueue, b: DemoQueue) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number);
+const oldestWaiting = (list: DemoQueue[]) => list.filter((item) => item.status === "WAITING").sort(byArrival)[0];
+
 export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
-  const [queues, setQueues] = useState<DemoQueue[]>(initialQueues);
+  // Dengan Supabase terkonfigurasi, data contoh tidak pernah ditampilkan, bahkan sesaat sebelum data database tiba.
+  const dataMode: "demo" | "supabase" = supabaseConfigured ? "supabase" : "demo";
+  const [queues, setQueues] = useState<DemoQueue[]>(supabaseConfigured ? [] : initialQueues);
+  const [ready, setReady] = useState(!supabaseConfigured);
+  const [today, setToday] = useState("");
   const [notice, setNotice] = useState("");
-  const [dataMode, setDataMode] = useState<"demo" | "supabase">("demo");
+  const lastExpiredDay = useRef("");
 
   const refreshFromDatabase = useCallback(async () => {
     if (!supabaseConfigured) return;
-    setDataMode("supabase");
     try {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("queues")
-        .select("id, queue_number, status, arrival_time, called_time, start_service_time, completion_time, profiles(name), services(name)")
+        .select("id, queue_number, status, arrival_time, called_time, start_service_time, completion_time, waiting_time, service_duration, profiles(name), services(name)")
         .order("arrival_time", { ascending: true })
         .order("id", { ascending: true });
       if (error) throw error;
       setQueues((data ?? []).map(mapDatabaseQueue));
-      setDataMode("supabase");
     } catch (error) {
       setNotice(error instanceof Error ? `Supabase: ${error.message}` : "Gagal memuat data Supabase.");
+    } finally {
+      setReady(true);
+    }
+  }, []);
+
+  // Antrian WAITING/CALLED dari hari sebelumnya dilewati otomatis oleh database (queue_lifecycle_hardening.sql).
+  // Bila SQL itu belum dijalankan, fungsinya belum ada: errornya diabaikan dan perilaku lama tetap berjalan.
+  const expireStaleQueues = useCallback(async () => {
+    if (!supabaseConfigured) return;
+    lastExpiredDay.current = officeDateKey();
+    try {
+      const { data, error } = await getSupabaseBrowserClient().rpc("expire_stale_queues");
+      if (!error && typeof data === "number" && data > 0) {
+        setNotice(`${data} antrian dari hari sebelumnya dilewati otomatis.`);
+      }
+    } catch {
+      // Fungsi belum dipasang, atau akun bukan administrator.
     }
   }, []);
 
   useEffect(() => {
-    if (!supabaseConfigured) return;
-    void refreshFromDatabase();
+    setToday(officeDateKey());
+    // Halaman yang dibiarkan terbuka semalaman: ganti hari, lalu lewati antrian hari lalu.
+    const timer = window.setInterval(() => {
+      const day = officeDateKey();
+      setToday((current) => (current === day ? current : day));
+      if (supabaseConfigured && day !== lastExpiredDay.current) {
+        void expireStaleQueues().then(refreshFromDatabase);
+      }
+    }, 60_000);
+
     let channel: ReturnType<ReturnType<typeof getSupabaseBrowserClient>["channel"]> | undefined;
-    try {
-      const supabase = getSupabaseBrowserClient();
-      channel = supabase.channel("admin-queues-realtime")
-        .on("postgres_changes", { event: "*", schema: "public", table: "queues" }, () => { void refreshFromDatabase(); })
-        .subscribe();
-    } catch {
-      // The page remains usable in demo mode if Supabase is not reachable.
+    if (supabaseConfigured) {
+      void expireStaleQueues().then(refreshFromDatabase);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        channel = supabase.channel("admin-queues-realtime")
+          .on("postgres_changes", { event: "*", schema: "public", table: "queues" }, () => { void refreshFromDatabase(); })
+          .subscribe();
+      } catch {
+        // Halaman tetap bisa dipakai tanpa realtime bila Supabase tidak terjangkau.
+      }
     }
-    return () => { if (channel) void getSupabaseBrowserClient().removeChannel(channel); };
-  }, [refreshFromDatabase]);
+    return () => {
+      window.clearInterval(timer);
+      if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+    };
+  }, [expireStaleQueues, refreshFromDatabase]);
 
   const updateStatus = useCallback(async (number: string, status: QueueStatus) => {
     if (dataMode === "supabase") {
@@ -113,14 +160,23 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
       if (!queue?.id) return;
       try {
         const supabase = getSupabaseBrowserClient();
-        let result: { error: { message: string } | null };
+        let result: { data?: unknown; error: { message: string } | null };
         if (status === "CALLED") {
-          const oldestWaiting = [...queues].filter((item) => item.status === "WAITING").sort((a, b) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number))[0];
-          if (oldestWaiting?.number !== number) {
-            setNotice(`FCFS: ${oldestWaiting?.number ?? "tidak ada antrian"} harus dipanggil lebih dahulu.`);
+          // Database memanggil antrian WAITING paling awal HARI INI (antrian hari lalu sudah dilewati otomatis),
+          // jadi tombol "Panggil" pada satu baris hanya boleh dipakai untuk antrian paling awal itu.
+          const first = oldestWaiting(queues.filter((item) => item.date === officeDateKey()));
+          if (first?.number !== number) {
+            setNotice(`FCFS: ${first?.number ?? "tidak ada antrian"} harus dipanggil lebih dahulu.`);
             return;
           }
           result = await supabase.rpc("call_next_queue");
+          const calledNumber = (result.data as { queue_number?: string } | null)?.queue_number;
+          if (!result.error && calledNumber && calledNumber !== number) {
+            // Terjadi bila antrian hari lalu masih WAITING dan queue_lifecycle_hardening.sql belum dijalankan.
+            setNotice(`Database memanggil ${calledNumber}, bukan ${number}, karena ${calledNumber} lebih awal menurut FCFS. Lewati atau layani ${calledNumber} lebih dahulu.`);
+            await refreshFromDatabase();
+            return;
+          }
         } else if (status === "SERVING") {
           result = await supabase.rpc("start_queue_service", { p_queue_id: queue.id });
         } else if (status === "COMPLETED") {
@@ -147,9 +203,9 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
         setNotice(`Loket masih aktif pada ${busyQueue.number}. Selesaikan antrian ini sebelum memanggil berikutnya.`);
         return;
       }
-      const oldestWaiting = [...queues].filter((item) => item.status === "WAITING").sort((a, b) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number))[0];
-      if (oldestWaiting && oldestWaiting.number !== number) {
-        setNotice(`FCFS: ${oldestWaiting.number} harus dipanggil lebih dahulu.`);
+      const first = oldestWaiting(queues);
+      if (first && first.number !== number) {
+        setNotice(`FCFS: ${first.number} harus dipanggil lebih dahulu.`);
         return;
       }
     }
@@ -183,9 +239,7 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
       setNotice(`Loket masih aktif pada ${active.number}. Selesaikan antrian ini sebelum memanggil berikutnya.`);
       return null;
     }
-    const next = [...queues]
-      .filter((queue) => queue.status === "WAITING")
-      .sort((a, b) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number))[0];
+    const next = oldestWaiting(queues);
     if (!next) {
       setNotice("Tidak ada antrian yang menunggu.");
       return null;
@@ -199,8 +253,8 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
 
   const currentQueue = queues.find((queue) => queue.status === "SERVING" || queue.status === "CALLED");
   const value = useMemo(() => ({
-    queues, updateStatus, callNext, currentQueue, notice, clearNotice: () => setNotice(""), dataMode,
-  }), [queues, updateStatus, callNext, currentQueue, notice, dataMode]);
+    queues, updateStatus, callNext, currentQueue, notice, clearNotice: () => setNotice(""), dataMode, ready, today,
+  }), [queues, updateStatus, callNext, currentQueue, notice, dataMode, ready, today]);
 
   return <QueueContext.Provider value={value}>{children}</QueueContext.Provider>;
 }
