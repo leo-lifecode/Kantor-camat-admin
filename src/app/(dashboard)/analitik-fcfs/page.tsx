@@ -34,15 +34,19 @@ export default function FCFSAnalyticsPage() {
     });
     return () => { active = false; };
   }, [databaseMode]);
+  // "Sekarang" baru diketahui setelah mount; menghitungnya saat render membuat HTML statis (tanggal build)
+  // berbeda dari browser dan memicu error hidrasi React #418.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { setNow(new Date()); }, []);
   const rows = useMemo(() => {
-    const now = new Date();
+    if (!now) return [];
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const weekStartDate = new Date(now);
     weekStartDate.setDate(now.getDate() - 6);
     const weekStart = `${weekStartDate.getFullYear()}-${String(weekStartDate.getMonth() + 1).padStart(2, "0")}-${String(weekStartDate.getDate()).padStart(2, "0")}`;
     const monthStart = today.slice(0, 7);
     return recordsData.filter(row => period === "all" || (period === "today" && row.day === today) || (period === "week" && row.day >= weekStart && row.day <= today) || (period === "month" && row.day.startsWith(monthStart)));
-  }, [period, recordsData]);
+  }, [period, recordsData, now]);
 
   // CANCELLED remains stored for history/audit, but is excluded from FCFS calculations.
   const fcfsRows = rows.filter(row => row.status !== "CANCELLED");
