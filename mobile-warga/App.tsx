@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Speech from "expo-speech";
 import type { Session } from "@supabase/supabase-js";
 import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { supabase } from "./src/lib/supabase";
+import { isExpiredTicket } from "./src/lib/queue-day";
 
 type Service = { id: string; name: string; description: string | null; estimated_duration: number };
 type Queue = {
@@ -66,7 +67,9 @@ export default function App() {
     }
     if (queueResult.error) setBanner(queueResult.error.message);
     else {
-      const row = queueResult.data as QueueRow | null;
+      // Tiket WAITING/CALLED dari hari sebelumnya tidak dianggap aktif; server melewatinya saat warga mengambil nomor baru.
+      const activeRow = queueResult.data as QueueRow | null;
+      const row = activeRow && !isExpiredTicket(activeRow) ? activeRow : null;
       const nextQueue: Queue | null = row ? { id: row.id, queue_number: row.queue_number, status: row.status, arrival_time: row.arrival_time, called_time: row.called_time, service: Array.isArray(row.services) ? row.services[0] : row.services } : null;
       if (nextQueue?.status === "CALLED" && lastQueueStatus.current !== "CALLED") {
         const spoken = `Nomor antrian Anda ${nextQueue.queue_number}, silakan menuju loket pelayanan.`;
@@ -308,7 +311,7 @@ export default function App() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-        {filteredServices.map((service, index) => <TouchableOpacity key={service.id} activeOpacity={0.88} onPress={() => setSelectedService(service.id)} style={[styles.serviceChoice, selectedService === service.id && styles.serviceChoiceSelected]}>
+        {filteredServices.map((service) => <TouchableOpacity key={service.id} activeOpacity={0.88} onPress={() => setSelectedService(service.id)} style={[styles.serviceChoice, selectedService === service.id && styles.serviceChoiceSelected]}>
           <View style={styles.serviceChoiceTop}>
             <View style={styles.serviceChoiceIcon}><Text style={styles.categoryIconText}>{["▣", "♧", "⇄", "✿", "⌂"][services.findIndex((item) => item.id === service.id) % 5]}</Text></View>
             <View style={{ flex: 1 }}>
@@ -391,7 +394,6 @@ export default function App() {
         {queueHistory.map((item) => {
           const itemService = Array.isArray(item.services) ? item.services[0]?.name : item.services?.name;
           const date = new Date(item.arrival_time);
-          const endTime = item.completion_time ?? item.called_time;
           const statusColor = item.status === "COMPLETED" ? colors.green : item.status === "CANCELLED" ? "#c2413a" : colors.amber;
           return <View key={item.id} style={styles.historyCard}>
             <View style={styles.historyCardTop}>
