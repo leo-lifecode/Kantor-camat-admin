@@ -5,7 +5,7 @@ import { Clock3 } from "lucide-react";
 import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function QueueStatus() {
-  const { queues } = useDemoQueues();
+  const { queues, ready } = useDemoQueues();
   const waiting = queues.filter((queue) => queue.status === "WAITING").sort((a, b) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number));
 
   return (
@@ -21,7 +21,7 @@ export default function QueueStatus() {
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Menunggu</span>
           </Link>
         ))}
-        {waiting.length === 0 && <p className="px-5 py-8 text-center text-sm text-gray-500">Tidak ada antrian menunggu.</p>}
+        {waiting.length === 0 && <p className="px-5 py-8 text-center text-sm text-gray-500">{ready ? "Tidak ada antrian menunggu." : "Memuat data…"}</p>}
       </div>
     </div>
   );

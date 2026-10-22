@@ -5,13 +5,16 @@ import { ArrowUpRight } from "lucide-react";
 import QueueStatusBadge from "./QueueStatusBadge";
 import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
 
-export default function QueueTable({ searchTerm = "", statusFilter = "ALL", dateFilter = "2026-10-13" }: { searchTerm?: string; statusFilter?: string; dateFilter?: string }) {
-  const { queues } = useDemoQueues();
-  const filteredQueues = queues.filter((queue) => {
+// dateFilter kosong berarti semua tanggal.
+export default function QueueTable({ searchTerm = "", statusFilter = "ALL", dateFilter = "" }: { searchTerm?: string; statusFilter?: string; dateFilter?: string }) {
+  const { queues, dataMode, ready } = useDemoQueues();
+  const inDate = queues.filter((queue) => !dateFilter || queue.date === dateFilter);
+  const filteredQueues = inDate.filter((queue) => {
     const matchesSearch = `${queue.number} ${queue.name} ${queue.service}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || queue.status === statusFilter;
-    return matchesSearch && matchesStatus && queue.date === dateFilter;
+    return matchesSearch && matchesStatus;
   });
+  const dateLabel = dateFilter ? `pada ${dateFilter}` : "pada semua tanggal";
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -31,11 +34,11 @@ export default function QueueTable({ searchTerm = "", statusFilter = "ALL", date
                 <td className="px-5 py-4 text-right"><Link href={`/antrian/${queue.number}`} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50">Detail <ArrowUpRight size={16} /></Link></td>
               </tr>
             ))}
-            {filteredQueues.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-gray-500">Tidak ada data antrian yang cocok.</td></tr>}
+            {filteredQueues.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-gray-500">{ready ? "Tidak ada data antrian yang cocok." : "Memuat data antrian…"}</td></tr>}
           </tbody>
         </table>
       </div>
-      <div className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">Menampilkan {filteredQueues.length} dari {queues.filter(queue => queue.date === dateFilter).length} data contoh pada {dateFilter}. Status dibagikan antarhalaman, tetapi belum disimpan ke database.</div>
+      <div className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">{dataMode === "supabase" ? `Menampilkan ${filteredQueues.length} dari ${inDate.length} antrian ${dateLabel}. Data tersimpan di database dan diperbarui otomatis.` : `Menampilkan ${filteredQueues.length} dari ${inDate.length} data contoh ${dateLabel}. Status dibagikan antarhalaman, tetapi belum disimpan ke database.`}</div>
     </div>
   );
 }

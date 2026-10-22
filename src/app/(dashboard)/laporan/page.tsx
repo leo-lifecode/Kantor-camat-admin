@@ -15,7 +15,9 @@ const data: ReportRow[] = [
 
 export default function ReportsPage() {
   const [rowsData, setRowsData] = useState<ReportRow[]>(data);
-  const [date, setDate] = useState(() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; });
+  // Tanggal hari ini diisi setelah mount; menghitungnya saat render membuat HTML statis (tanggal build) berbeda dari browser.
+  const [date, setDate] = useState("");
+  useEffect(() => { const now = new Date(); setDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`); }, []);
   const [notice, setNotice] = useState("");
   const databaseMode = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   useEffect(() => {

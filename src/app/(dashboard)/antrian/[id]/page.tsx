@@ -5,16 +5,21 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
 import QueueStatusBadge from "@/components/queue/QueueStatusBadge";
 import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
+import { formatDuration, secondsBetween } from "@/lib/queue-time";
 
 export default function QueueDetailPage() {
   const params = useParams<{ id: string }>();
   const queueNumber = decodeURIComponent(params.id ?? "A-003");
-  const { queues, updateStatus, notice } = useDemoQueues();
+  const { queues, updateStatus, notice, dataMode, ready } = useDemoQueues();
   const queue = queues.find((item) => item.number === queueNumber);
 
   if (!queue) {
-    return <div className="rounded-2xl border bg-white p-8"><h1 className="text-xl font-bold text-gray-900">Antrian tidak ditemukan</h1><p className="mt-2 text-sm text-gray-500">Nomor {queueNumber} tidak ada dalam data demo.</p><Link href="/antrian" className="mt-4 inline-flex text-sm font-semibold text-purple-700">Kembali ke daftar</Link></div>;
+    return <div className="rounded-2xl border bg-white p-8"><h1 className="text-xl font-bold text-gray-900">{ready ? "Antrian tidak ditemukan" : "Memuat data antrian…"}</h1>{ready && <p className="mt-2 text-sm text-gray-500">Nomor {queueNumber} {dataMode === "supabase" ? "tidak ditemukan di database." : "tidak ada dalam data demo."}</p>}<Link href="/antrian" className="mt-4 inline-flex text-sm font-semibold text-purple-700">Kembali ke daftar</Link></div>;
   }
+
+  // Mode database memakai durasi yang dihitung database. Mode demo menghitungnya dari jam pada data contoh.
+  const waitingSeconds = queue.waitingSeconds ?? (dataMode === "demo" ? secondsBetween(queue.arrival, queue.started) : undefined);
+  const serviceSeconds = queue.serviceSeconds ?? (dataMode === "demo" ? secondsBetween(queue.started, queue.completed) : undefined);
 
   const canCall = queue.status === "WAITING";
   const canStart = queue.status === "CALLED";
@@ -43,12 +48,12 @@ export default function QueueDetailPage() {
         <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b px-6 py-5"><h2 className="font-semibold text-gray-900">Timeline Antrian</h2><p className="mt-1 text-xs text-gray-500">Timestamp kedatangan menentukan urutan FCFS.</p></div>
           <div className="grid gap-4 p-6 sm:grid-cols-2">
-            <Metric label="Arrival Time" value={`${queue.date}, ${queue.arrival}`} /><Metric label="Called Time" value={queue.called ?? "-"} /><Metric label="Start Service" value={queue.started ?? "-"} /><Metric label="Completion Time" value={queue.completed ?? "-"} /><Metric label="Service Duration" value={queue.started && queue.completed ? "Tercatat pada mode demo" : "-"} /><Metric label="Waiting Time" value={queue.called ? "Tercatat pada mode demo" : "-"} />
+            <Metric label="Arrival Time" value={`${queue.date}, ${queue.arrival}`} /><Metric label="Called Time" value={queue.called ?? "-"} /><Metric label="Start Service" value={queue.started ?? "-"} /><Metric label="Completion Time" value={queue.completed ?? "-"} /><Metric label="Service Duration" value={formatDuration(serviceSeconds)} /><Metric label="Waiting Time" value={formatDuration(waitingSeconds)} />
           </div>
         </section>
       </div>
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="font-semibold text-gray-900">Aksi Antrian</h2><p className="mt-1 text-sm text-gray-500">Status berubah langsung di dashboard selama sesi demo aktif. Belum tersimpan ke database.</p>
+        <h2 className="font-semibold text-gray-900">Aksi Antrian</h2><p className="mt-1 text-sm text-gray-500">{dataMode === "supabase" ? "Perubahan status disimpan di database dan langsung tampil di dashboard serta aplikasi warga." : "Status berubah langsung di dashboard selama sesi demo aktif. Belum tersimpan ke database."}</p>
         {notice && <p role="status" className="mt-4 rounded-xl bg-purple-50 p-3 text-sm text-purple-800">{notice}</p>}
         <div className="mt-4 flex flex-wrap gap-3">
           <button disabled={!canCall} onClick={() => action("CALLED")} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"><Clock3 size={18} />Panggil Antrian</button>

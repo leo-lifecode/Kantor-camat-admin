@@ -92,7 +92,9 @@ export default function AdminLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setMobileOpen(true)} />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">\n          <DemoQueueProvider>{children}</DemoQueueProvider>\n        </main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <DemoQueueProvider>{children}</DemoQueueProvider>
+        </main>
       </div>
     </div>
   );
