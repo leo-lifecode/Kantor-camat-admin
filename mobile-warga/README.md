@@ -15,6 +15,7 @@ Aplikasi Expo/React Native untuk warga: login/registrasi, mengambil satu nomor a
 
 - Jangan pernah menaruh service-role key di aplikasi.
 - Hari antrian dihitung menurut WIB. Tiket `WAITING`/`CALLED` dari hari sebelumnya tidak ditampilkan sebagai antrian aktif, sehingga warga bisa langsung mengambil nomor baru (server melewatinya otomatis). Untuk WITA/WIT, ubah `OFFICE_UTC_OFFSET_HOURS` di `src/lib/queue-day.ts` bersamaan dengan zona waktu pada SQL.
+- Header dan tab bawah memberi ruang untuk status bar dan tombol navigasi HP lewat `react-native-safe-area-context` (Android modern menggambar aplikasi sampai ke belakang bar sistem, dan `SafeAreaView` bawaan React Native hanya bekerja di iOS). Modul ini sudah ada di Expo Go; APK yang sudah dibangun baru berubah setelah dibangun ulang dengan EAS karena modulnya native.
 - Realtime memerlukan tabel `queues`, `notifications`, dan `announcements` diaktifkan pada Supabase Realtime publication. RLS tetap harus aktif.
 - Push notification ketika aplikasi benar-benar tertutup memerlukan konfigurasi kredensial FCM/Expo Push dan token perangkat pada `device_tokens`; ini tidak bisa aktif hanya dengan mengisi anon key.
 - Aplikasi membaca data langsung dari Supabase. Belum ada konfigurasi backend produksi, project Supabase, kredensial push, atau APK yang dibangun dari lingkungan ini.
