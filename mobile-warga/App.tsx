@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, RefreshControl, SafeAreaView, ScrollView,
+  ActivityIndicator, Alert, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Notifications from "expo-notifications";
 import * as Speech from "expo-speech";
 import type { Session } from "@supabase/supabase-js";
@@ -32,7 +33,18 @@ Notifications.setNotificationHandler({
 
 const colors = { ink: "#171725", muted: "#777783", purple: "#6957e8", pale: "#eeebff", line: "#e8e7ee", bg: "#f7f7fb", green: "#15803d", amber: "#b45309" };
 
+// Tinggi header dan tab bawah di luar ruang untuk bar sistem (status bar dan tombol navigasi HP).
+const BAR_HEIGHT = 64;
+
+// Di Android modern (edge-to-edge) aplikasi digambar sampai ke belakang status bar dan tombol navigasi, dan
+// SafeAreaView bawaan React Native hanya bekerja di iOS. SafeAreaProvider + useSafeAreaInsets memberi tahu
+// seberapa besar ruang yang harus disisakan agar header dan tab bawah tidak tertutup bar sistem.
 export default function App() {
+  return <SafeAreaProvider><AppContent /></SafeAreaProvider>;
+}
+
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -204,9 +216,9 @@ export default function App() {
   // 2 = menunggu, 3 = dipanggil ke loket, 4 = sedang dilayani (verifikasi dokumen), 5 = selesai.
   const currentStep: number = queueStatus === "COMPLETED" ? 5 : queueStatus === "SERVING" ? 4 : queueStatus === "CALLED" ? 3 : 2;
 
-  return <SafeAreaView style={styles.screen}>
+  return <View style={styles.screen}>
     <ExpoStatusBar style="dark" />
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, { height: BAR_HEIGHT + insets.top, paddingTop: insets.top }]}>
       <View style={styles.brandMark}><Text style={styles.brandMarkText}>◴</Text></View>
       <View style={styles.brandCopy}>
         <Text style={styles.brandEyebrow}>Kecamatan Talawi</Text>
@@ -434,13 +446,13 @@ export default function App() {
         <TouchableOpacity style={styles.profileLogout} onPress={() => void signOut()}><Text style={styles.profileLogoutText}>↪  Keluar dari akun</Text></TouchableOpacity>
       </>}
     </ScrollView>
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
       <TabButton icon="⌂" label="Home" active={screen === "home"} onPress={() => setScreen("home")} />
       <TabButton icon="▣" label="Antrian" active={screen === "services" || screen === "status"} onPress={() => setScreen(queue ? "status" : "services")} />
       <TabButton icon="◷" label="Riwayat" active={screen === "history"} onPress={() => setScreen("history")} />
       <TabButton icon="♙" label="Profil" active={screen === "profile"} onPress={() => setScreen("profile")} />
     </View>
-  </SafeAreaView>;
+  </View>;
 }
 
 function statusLabel(status: string) {
@@ -514,7 +526,7 @@ const styles = StyleSheet.create({
   announcementBody: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   date: { color: colors.muted, fontSize: 11, marginTop: 2 },
   footer: { textAlign: "center", color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 6 },
-  topBar: { height: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, backgroundColor: "#fff" },
+  topBar: { height: BAR_HEIGHT, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, backgroundColor: "#fff" },
   brandMark: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.purple },
   brandMarkText: { color: "#fff", fontSize: 24, fontWeight: "700" },
   brandCopy: { flex: 1, paddingLeft: 10 },
@@ -688,7 +700,7 @@ const styles = StyleSheet.create({
   profileAvatarText: { color: colors.purple, fontSize: 26, fontWeight: "800" },
   outlineButton: { borderColor: colors.purple, borderWidth: 1, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 13, marginTop: 12 },
   outlineButtonText: { color: colors.purple, fontWeight: "700" },
-  tabBar: { height: 64, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0eff3", paddingHorizontal: 4 },
+  tabBar: { height: BAR_HEIGHT, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderTopWidth: 1, borderTopColor: "#f0eff3", paddingHorizontal: 4 },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 2, minHeight: 50 },
   tabIcon: { fontSize: 20, lineHeight: 22, color: colors.muted },
   tabLabel: { color: colors.muted, fontSize: 10 },
