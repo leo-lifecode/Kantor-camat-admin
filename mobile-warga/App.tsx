@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, RefreshControl, ScrollView,
+  ActivityIndicator, Alert, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -119,6 +119,55 @@ function AppContent() {
     return () => { alive = false; listener.subscription.unsubscribe(); };
   }, [loadData]);
 
+  // Daftarkan perangkat ke Expo Push Service dan simpan token milik akun warga di Supabase.
+  useEffect(() => {
+    if (!supabase || !session?.user.id) return;
+    let active = true;
+    const client = supabase;
+    const userId = session.user.id;
+
+    async function registerPushToken() {
+      try {
+        if (Platform.OS === "android") {
+          await Notifications.setNotificationChannelAsync("default", {
+            name: "Notifikasi Antrean",
+            importance: Notifications.AndroidImportance.MAX,
+            sound: "default",
+          });
+        }
+        let permission = await Notifications.getPermissionsAsync();
+        if (permission.status !== "granted") {
+          permission = await Notifications.requestPermissionsAsync();
+        }
+        if (!active || permission.status !== "granted") return;
+
+        const result = await Notifications.getExpoPushTokenAsync({
+          projectId: "e6a046d1-d356-485f-955f-03c4500a6ad1",
+        });
+        if (!active || !result.data) return;
+
+        const { error } = await client.from("device_tokens").upsert({
+          user_id: userId,
+          token: result.data,
+          platform: Platform.OS,
+        }, { onConflict: "token" });
+        if (error) throw error;
+        console.log("Expo Push Token terdaftar untuk akun warga.");
+      } catch (error) {
+        console.warn("Registrasi Expo Push Token gagal:", error instanceof Error ? error.message : error);
+      }
+    }
+
+    const tokenSubscription = Notifications.addPushTokenListener(() => {
+      void registerPushToken();
+    });
+    void registerPushToken();
+
+    return () => {
+      active = false;
+      tokenSubscription?.remove();
+    };
+  }, [session?.user.id]);
   useEffect(() => {
     if (!supabase || !session?.user.id) return;
     const client = supabase;
