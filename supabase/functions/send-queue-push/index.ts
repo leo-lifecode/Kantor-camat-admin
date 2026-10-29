@@ -3,37 +3,45 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-  if (req.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405, headers: corsHeaders });
 
-  const webhookSecret = Deno.env.get("QUEUE_PUSH_WEBHOOK_SECRET");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!webhookSecret || !supabaseUrl || !serviceRoleKey) {
-    console.error("Missing required Edge Function environment variables.");
+  const secretKeysRaw = Deno.env.get("SUPABASE_SECRET_KEYS");
+  let secretKey: string | undefined;
+  try {
+    if (secretKeysRaw) {
+      const secretKeys = JSON.parse(secretKeysRaw);
+      secretKey = secretKeys.default ?? Object.values(secretKeys)[0] as string | undefined;
+    }
+  } catch (error) {
+    console.error("Could not parse project secret keys", error);
+  }
+  secretKey ??= Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!supabaseUrl || !secretKey) {
+    console.error("Missing Supabase URL or server-side secret key.");
     return Response.json({ error: "Server configuration error" }, { status: 500, headers: corsHeaders });
   }
-  if (req.headers.get("x-webhook-secret") !== webhookSecret) {
+  if (req.headers.get("apikey") !== secretKey) {
     return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
   }
 
   try {
     const payload = await req.json();
-    // Supports a Supabase Database Webhook payload or a direct notification row.
     const row = payload?.record ?? payload?.new ?? payload;
+    if (payload?.table && payload.table !== "notifications") {
+      return Response.json({ skipped: true, reason: "Not a notifications event" }, { headers: corsHeaders });
+    }
     if (row?.type !== "QUEUE_CALLED" || !row?.user_id) {
       return Response.json({ skipped: true, reason: "Not a QUEUE_CALLED notification" }, { headers: corsHeaders });
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    const supabase = createClient(supabaseUrl, secretKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data: devices, error } = await supabase
@@ -66,7 +74,7 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: "Expo Push API failed", details: expoResult }, { status: 502, headers: corsHeaders });
     }
 
-    const tickets = Array.isArray(expoResult?.data) ? expoResult.data : [];
+    const tickets = Array.isArray(expoResult?.data) ? expoResult.data : [expoResult?.data].filter(Boolean);
     const invalidTokens = tickets.flatMap((ticket: { status?: string; details?: { error?: string } }, index: number) =>
       ticket?.status === "error" && ticket?.details?.error === "DeviceNotRegistered" ? [devices[index]?.id].filter(Boolean) : []
     );
