@@ -63,6 +63,7 @@ function AppContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [banner, setBanner] = useState("");
   const lastQueueStatus = useRef<string | null>(null);
+  const pushToken = useRef<string | null>(null);
 
   const loadData = useCallback(async (userId: string) => {
     if (!supabase) return;
@@ -146,12 +147,13 @@ function AppContent() {
         });
         if (!active || !result.data) return;
 
-        const { error } = await client.from("device_tokens").upsert({
-          user_id: userId,
-          token: result.data,
-          platform: Platform.OS,
-        }, { onConflict: "token" });
+        // RPC memindahkan kepemilikan token ke akun yang sedang login (upsert langsung gagal bila token milik akun lain).
+        const { error } = await client.rpc("register_device_token", {
+          p_token: result.data,
+          p_platform: Platform.OS,
+        });
         if (error) throw error;
+        pushToken.current = result.data;
         console.log("Expo Push Token terdaftar untuk akun warga.");
       } catch (error) {
         console.warn("Registrasi Expo Push Token gagal:", error instanceof Error ? error.message : error);
@@ -237,7 +239,17 @@ function AppContent() {
     }
   }
 
-  async function signOut() { if (supabase) await supabase.auth.signOut(); setSession(null); }
+  async function signOut() {
+    if (supabase) {
+      // Lepas token push perangkat ini dari akun yang keluar agar tidak menerima notifikasi akun tersebut.
+      if (pushToken.current) {
+        try { await supabase.rpc("unregister_device_token", { p_token: pushToken.current }); } catch { /* tetap keluar */ }
+        pushToken.current = null;
+      }
+      await supabase.auth.signOut();
+    }
+    setSession(null);
+  }
 
   async function refresh() {
     if (!session?.user.id) return;

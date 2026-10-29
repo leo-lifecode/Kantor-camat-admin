@@ -7,10 +7,17 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Allow the UI to run in demo mode before Supabase environment variables are configured.
-  // Set both variables to enable server-verified session and role checks.
+  // Demo mode is only allowed outside production. In production the admin pages fail closed when the
+  // Supabase environment variables are missing, instead of being served without session and role checks.
   if (!supabaseUrl || !supabaseAnonKey) {
-    return response;
+    if (process.env.NODE_ENV !== "production" || request.nextUrl.pathname === "/login") {
+      return response;
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("error", "configuration");
+    return NextResponse.redirect(url);
   }
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
