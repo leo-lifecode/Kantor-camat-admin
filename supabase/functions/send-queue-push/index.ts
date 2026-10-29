@@ -37,8 +37,9 @@ Deno.serve(async (req: Request) => {
     if (payload?.table && payload.table !== "notifications") {
       return Response.json({ skipped: true, reason: "Not a notifications event" }, { headers: corsHeaders });
     }
-    if (row?.type !== "QUEUE_CALLED" || !row?.user_id) {
-      return Response.json({ skipped: true, reason: "Not a QUEUE_CALLED notification" }, { headers: corsHeaders });
+    const supportedTypes = ["QUEUE_CALLED", "QUEUE_COMPLETED"];
+    if (!supportedTypes.includes(row?.type) || !row?.user_id) {
+      return Response.json({ skipped: true, reason: "Unsupported notification type or missing user_id" }, { headers: corsHeaders });
     }
 
     const supabase = createClient(supabaseUrl, secretKey, {
@@ -56,8 +57,10 @@ Deno.serve(async (req: Request) => {
     const messages = devices.map((device) => ({
       to: device.token,
       sound: "default",
-      title: row.title ?? "Antrean Anda dipanggil",
-      body: row.body ?? "Nomor antrean Anda dipanggil. Silakan menuju loket pelayanan.",
+      title: row.title ?? (row.type === "QUEUE_COMPLETED" ? "Pelayanan Anda Selesai" : "Antrean Anda Dipanggil"),
+      body: row.body ?? (row.type === "QUEUE_COMPLETED"
+        ? "Pelayanan untuk nomor antrean Anda telah selesai. Terima kasih telah menggunakan layanan Kantor Camat Talawi. Anda dapat meninggalkan loket pelayanan."
+        : "Nomor antrean Anda dipanggil. Silakan menuju loket pelayanan."),
       priority: "high",
       channelId: "default",
       data: { type: row.type, queue_id: row.queue_id ?? null },
