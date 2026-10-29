@@ -1,36 +1,32 @@
 # Expo Push Notifications - Antrian Talawi
 
-## What's implemented
+## Implemented
 
-- The warga app requests notification permission after login, obtains an Expo Push Token, and upserts it into `public.device_tokens`.
-- `supabase/functions/send-queue-push/index.ts` sends a push notification for a `QUEUE_CALLED` row and removes tokens rejected by Expo as `DeviceNotRegistered`.
+- After login, the warga app requests notification permission, retrieves an Expo Push Token and upserts it into `public.device_tokens`.
+- The deployed Supabase Edge Function `send-queue-push` sends push notifications for `QUEUE_CALLED` rows and cleans up tokens Expo reports as `DeviceNotRegistered`.
 
-## Required server configuration
+## Activate the database-to-push connection
 
-Set these secrets for the Supabase Edge Function (never put the service-role key in the mobile app):
+The Edge Function is deployed to project `ncjuntgddvxhrfzxvsbc`. The database webhook still needs to be configured.
 
-- `SUPABASE_URL`: project URL.
-- `SUPABASE_SERVICE_ROLE_KEY`: project service-role key.
-- `QUEUE_PUSH_WEBHOOK_SECRET`: a long random secret used to authenticate the database webhook.
+1. Open Supabase Dashboard: https://supabase.com/dashboard/project/ncjuntgddvxhrfzxvsbc/database/hooks
+2. Create a Database Webhook named `queue-called-push`.
+3. Select schema `public`, table `notifications`, event `INSERT`.
+4. Select Edge Function `send-queue-push` as the target.
+5. Add the project's **secret API key** as the `apikey` header. Do not use the publishable/anon key. The function validates this header against the server-side `SUPABASE_SECRET_KEYS` environment value.
+6. Save the webhook.
 
-Deploy function `send-queue-push` with JWT verification disabled only because the database webhook authenticates using `x-webhook-secret`. Do not expose that secret in the app or repository.
+The secret key belongs only in Supabase server configuration. Never commit it or put it in the APK.
 
-## Connect database events
+## Android and EAS checks
 
-Create a Supabase Database Webhook on `public.notifications`, event `INSERT`, pointing to:
+1. Confirm `mobile-warga/google-services.json` belongs to the Firebase project associated with the Android FCM V1 service-account credential configured in EAS.
+2. Build and install a new APK after any native Firebase or notification configuration changes.
+3. Sign in from the APK and grant notification permission. Verify a row for the account appears in `public.device_tokens`.
+4. Call that warga's queue from the admin dashboard while the APK is backgrounded, then verify the push arrives.
+5. Check Edge Function logs and Supabase Database Webhook delivery logs if it does not.
 
-`https://ncjuntgddvxhrfzxvsbc.supabase.co/functions/v1/send-queue-push`
+## Current limitations
 
-Add header `x-webhook-secret: <same QUEUE_PUSH_WEBHOOK_SECRET>` and `Content-Type: application/json`. The function ignores rows except `type = QUEUE_CALLED` and reads the target user's tokens from `device_tokens`.
-
-## Android requirements
-
-1. Confirm `mobile-warga/google-services.json` belongs to the same Firebase project as the FCM V1 service-account credential configured for the EAS project.
-2. Build and install a new native APK with EAS after configuring credentials. Expo Go is not a valid remote-push test target for this Android setup.
-3. Sign in on the APK and accept notification permission. Confirm a row appears in `public.device_tokens`.
-4. Test by calling a queue from the admin dashboard while the warga app is backgrounded.
-
-## Notes
-
-- The app still uses local notification and speech when it is actively observing a queue status change. Push delivery is separate and can reach the device while the app is backgrounded or terminated.
-- Expo tickets only confirm Expo accepted the message. For production reliability, add scheduled push-receipt checks and retry handling.
+- Expo Push Service tickets show that Expo accepted a message, not necessarily that the device displayed it. Production-grade reliability should add push-receipt polling and retry handling.
+- Local notification/speech logic remains in the app for foreground status changes.
