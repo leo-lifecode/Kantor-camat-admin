@@ -125,7 +125,6 @@ function AppContent() {
     let active = true;
     const client = supabase;
     const userId = session.user.id;
-    let tokenSubscription: Notifications.Subscription | undefined;
 
     async function registerPushToken() {
       try {
@@ -159,7 +158,7 @@ function AppContent() {
       }
     }
 
-    tokenSubscription = Notifications.addPushTokenListener(() => {
+    const tokenSubscription = Notifications.addPushTokenListener(() => {
       void registerPushToken();
     });
     void registerPushToken();
