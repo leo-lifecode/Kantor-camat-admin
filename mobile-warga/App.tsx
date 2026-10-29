@@ -176,7 +176,8 @@ function AppContent() {
       .on("postgres_changes", { event: "*", schema: "public", table: "queues", filter: `user_id=eq.${userId}` }, () => { void loadData(userId); })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, (payload) => {
         const row = payload.new as { body?: string; type?: string };
-        if (row.type === "QUEUE_CALLED") setBanner(row.body ?? "Nomor antrian Anda dipanggil.");
+        if (row.type === "QUEUE_CALLED") setBanner(row.body ?? "Nomor antrean Anda dipanggil.");
+        if (row.type === "QUEUE_COMPLETED") setBanner(row.body ?? "Pelayanan Anda telah selesai. Terima kasih.");
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => { void loadData(userId); })
       .subscribe();
@@ -268,12 +269,12 @@ function AppContent() {
   return <View style={styles.screen}>
     <ExpoStatusBar style="dark" />
     <View style={[styles.topBar, { height: BAR_HEIGHT + insets.top, paddingTop: insets.top }]}>
-      <View style={styles.brandMark}><Text style={styles.brandMarkText}>◴</Text></View>
+      <View style={styles.brandMark}><Text style={styles.brandMarkText}>⌂</Text></View>
       <View style={styles.brandCopy}>
         <Text style={styles.brandEyebrow}>Kecamatan Talawi</Text>
         <Text style={styles.brandTitle}>{screen === "home" ? "Home" : screen === "services" ? "Antrian" : screen === "status" ? "Antrian" : screen === "history" ? "Riwayat" : "Profil"}</Text>
       </View>
-      <TouchableOpacity style={styles.headerAction} onPress={() => setBanner("Notifikasi antrean akan muncul di sini.")}><Text style={styles.headerActionText}>♧</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.headerAction} onPress={() => setBanner("Notifikasi antrean akan muncul di sini.")}><Text style={styles.headerActionText}>♢</Text></TouchableOpacity>
       <TouchableOpacity style={styles.avatar} onPress={() => setScreen("profile")}><Text style={styles.avatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></TouchableOpacity>
     </View>
 
@@ -293,7 +294,7 @@ function AppContent() {
             <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>Sistem aktif</Text></View>
           </View>
           <TouchableOpacity style={styles.heroQueue} onPress={() => setScreen(queue ? "status" : "services")}>
-            <View style={styles.heroQueueIcon}><Text style={styles.heroQueueIconText}>◖</Text></View>
+            <View style={styles.heroQueueIcon}><Text style={styles.heroQueueIconText}>▣</Text></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroQueueLabel}>{queue ? "ANTREAN ANDA" : "LAYANAN KECAMATAN"}</Text>
               <Text style={styles.heroQueueNumber}>{queue ? queue.queue_number : "Ambil nomor"}</Text>
@@ -304,7 +305,7 @@ function AppContent() {
         </View>
 
         <TouchableOpacity style={styles.quickAction} onPress={() => setScreen(queue ? "status" : "services")}>
-          <View style={styles.quickIcon}><Text style={styles.quickIconText}>▣</Text></View>
+          <View style={styles.quickIcon}><Text style={styles.quickIconText}>＋</Text></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.quickTitle}>{queue ? "Lihat antrean aktif" : "Perlu layanan kecamatan?"}</Text>
             <Text style={styles.quickSubtitle}>{queue ? "Pantau posisi dan status layanan" : "Pilih layanan dan ambil nomor antrean"}</Text>
@@ -318,7 +319,7 @@ function AppContent() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
           {services.slice(0, 5).map((service, index) => <TouchableOpacity key={service.id} style={styles.categoryCard} onPress={() => { setSelectedService(service.id); setScreen("services"); }}>
-            <View style={[styles.categoryIcon, { backgroundColor: index % 2 ? "#EAFBF3" : "#EEEAFE" }]}><Text style={styles.categoryIconText}>{["▣", "♧", "▤", "✿", "⌂"][index % 5]}</Text></View>
+            <View style={[styles.categoryIcon, { backgroundColor: index % 2 ? "#EAFBF3" : "#EEEAFE" }]}><Text style={styles.categoryIconText}>{getServiceIcon(service.name)}</Text></View>
             <Text style={styles.categoryName} numberOfLines={2}>{service.name}</Text>
             <Text style={styles.categoryHint}>{service.estimated_duration} mnt</Text>
           </TouchableOpacity>)}
@@ -340,7 +341,7 @@ function AppContent() {
 
         <View style={styles.sectionHeading}><View><Text style={styles.sectionTitle}>Status loket pelayanan</Text><Text style={styles.sectionCaption}>Estimasi waktu sesuai layanan</Text></View></View>
         {services.slice(0, 3).map((service, index) => <TouchableOpacity key={service.id} style={styles.servicePreview} onPress={() => { setSelectedService(service.id); setScreen("services"); }}>
-          <View style={styles.servicePreviewIcon}><Text style={styles.categoryIconText}>{["▣", "♧", "▤"][index]}</Text></View>
+          <View style={styles.servicePreviewIcon}><Text style={styles.categoryIconText}>{getServiceIcon(service.name)}</Text></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.servicePreviewTitle}>{service.name}</Text>
             <Text style={styles.servicePreviewMeta}>{service.description ?? "Pelayanan Kantor Camat Talawi"}</Text>
@@ -374,7 +375,7 @@ function AppContent() {
         </ScrollView>
         {filteredServices.map((service) => <TouchableOpacity key={service.id} activeOpacity={0.88} onPress={() => setSelectedService(service.id)} style={[styles.serviceChoice, selectedService === service.id && styles.serviceChoiceSelected]}>
           <View style={styles.serviceChoiceTop}>
-            <View style={styles.serviceChoiceIcon}><Text style={styles.categoryIconText}>{["▣", "♧", "⇄", "✿", "⌂"][services.findIndex((item) => item.id === service.id) % 5]}</Text></View>
+            <View style={styles.serviceChoiceIcon}><Text style={styles.categoryIconText}>{getServiceIcon(service.name)}</Text></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.serviceChoiceTitle}>{service.name}</Text>
               <Text style={styles.serviceChoiceDescription}>{service.description ?? "Layanan administrasi Kantor Camat Talawi."}</Text>
@@ -512,6 +513,15 @@ function statusLabel(status: string) {
   if (status === "CANCELLED") return "Dibatalkan";
   if (status === "SKIPPED") return "Dilewati";
   return status;
+}
+
+function getServiceIcon(name: string): string {
+  const value = name.toLocaleLowerCase("id-ID");
+  if (value.includes("ktp") || value.includes("kk") || value.includes("kartu") || value.includes("akta") || value.includes("kependudukan")) return "▤";
+  if (value.includes("surat") || value.includes("rekomendasi") || value.includes("domisili")) return "▧";
+  if (value.includes("izin") || value.includes("usaha")) return "✓";
+  if (value.includes("pajak") || value.includes("pbb")) return "Rp";
+  return "▣";
 }
 
 function TabButton({ icon, label, active, onPress }: { icon: string; label: string; active: boolean; onPress: () => void }) {
