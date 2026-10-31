@@ -23,7 +23,9 @@ export default function CurrentQueue() {
       </div>
       {notice && <p role="status" className="mt-4 rounded-xl bg-purple-50 p-3 text-xs leading-5 text-purple-800">{notice}</p>}
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <button onClick={() => active && updateStatus(active.number, "COMPLETED")} disabled={active?.status !== "SERVING"} className="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={17} />Selesaikan</button>
+        {active?.status === "CALLED"
+          ? <button onClick={() => updateStatus(active.number, "SERVING")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-3 py-3 text-sm font-semibold text-purple-700 hover:bg-purple-100"><PlayCircle size={17} />Mulai Dilayani</button>
+          : <button onClick={() => active && updateStatus(active.number, "COMPLETED")} disabled={active?.status !== "SERVING"} className="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={17} />Selesaikan</button>}
         <button onClick={callNext} disabled={!!active || waitingCount === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-3 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"><SkipForward size={17} />Panggil Berikutnya</button>
       </div>
       <p className="mt-3 text-center text-[11px] text-gray-400">{dataMode === "supabase" ? "Terhubung ke Supabase · status tersimpan di database dan diperbarui otomatis" : "Mode demo · status tersinkron antarhalaman, belum tersimpan ke database"}</p>

@@ -10,10 +10,20 @@
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "POST_NOTIFICATIONS"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6957e8"
+      }
     },
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#6957e8"
+        }
+      ],
       "expo-asset"
     ],
     "extra": {
@@ -21,6 +31,12 @@
         "projectId": "e6a046d1-d356-485f-955f-03c4500a6ad1"
       }
     },
-    "owner": "fahrizalas"
+    "owner": "fahrizalas",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
   }
 }
