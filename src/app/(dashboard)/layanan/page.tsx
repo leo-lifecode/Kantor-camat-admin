@@ -4,15 +4,26 @@ import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { Plus, Search, Briefcase, Pencil, ToggleLeft, X } from "lucide-react";
 
-type Service = { id: string | number; code: string; name: string; description: string; duration: number; active: boolean };
+type Service = { id: string | number; code: string; name: string; description: string; duration: number; active: boolean; requirements: string[] };
+type ServiceRow = { id: string; code: string; name: string; description: string | null; estimated_duration: number; is_active: boolean; requirements?: string[] | null };
+
+const toService = (row: ServiceRow): Service => ({ id: row.id, code: row.code, name: row.name, description: row.description ?? "", duration: row.estimated_duration, active: row.is_active, requirements: row.requirements ?? [] });
+
+// Kolom requirements baru ada setelah migrasi persyaratan dijalankan; tanpa itu daftar tetap dimuat tanpa dokumen.
+async function fetchServices() {
+  const supabase = getSupabaseBrowserClient();
+  const full = await supabase.from("services").select("id,code,name,description,estimated_duration,is_active,requirements").order("name");
+  if (full.error && /requirements/i.test(full.error.message)) return supabase.from("services").select("id,code,name,description,estimated_duration,is_active").order("name");
+  return full;
+}
 const initialServices: Service[] = [
-  { id: 1, code: "KTP", name: "Pembuatan KTP", description: "Pembuatan dan pembaruan Kartu Tanda Penduduk", duration: 15, active: true },
-  { id: 2, code: "KK", name: "Kartu Keluarga", description: "Pembuatan dan perubahan Kartu Keluarga", duration: 20, active: true },
-  { id: 3, code: "DOM", name: "Surat Domisili", description: "Surat keterangan domisili warga", duration: 10, active: true },
-  { id: 4, code: "SKU", name: "Surat Keterangan Usaha", description: "Surat keterangan usaha warga", duration: 15, active: false },
+  { id: 1, code: "KTP", name: "Pembuatan KTP", description: "Pembuatan dan pembaruan Kartu Tanda Penduduk", duration: 15, active: true, requirements: [] },
+  { id: 2, code: "KK", name: "Kartu Keluarga", description: "Pembuatan dan perubahan Kartu Keluarga", duration: 20, active: true, requirements: [] },
+  { id: 3, code: "DOM", name: "Surat Domisili", description: "Surat keterangan domisili warga", duration: 10, active: true, requirements: [] },
+  { id: 4, code: "SKU", name: "Surat Keterangan Usaha", description: "Surat keterangan usaha warga", duration: 15, active: false, requirements: [] },
 ];
 
-const blankForm = { code: "", name: "", description: "", duration: 15 };
+const blankForm = { code: "", name: "", description: "", duration: 15, requirements: "" };
 
 export default function ServicesPage() {
   const [services, setServices] = useState(initialServices);
@@ -27,10 +38,10 @@ export default function ServicesPage() {
   useEffect(() => {
     if (!databaseMode) return;
     let active = true;
-    getSupabaseBrowserClient().from("services").select("id,code,name,description,estimated_duration,is_active").order("name").then(({ data, error }) => {
+    fetchServices().then(({ data, error }) => {
       if (!active) return;
       if (error) { setNotice(error.message); return; }
-      setServices((data ?? []).map(row => ({ id: row.id, code: row.code, name: row.name, description: row.description ?? "", duration: row.estimated_duration, active: row.is_active })));
+      setServices((data ?? []).map(toService));
     });
     return () => { active = false; };
   }, [databaseMode]);
@@ -48,7 +59,7 @@ export default function ServicesPage() {
 
   function openEdit(service: Service) {
     setEditingId(service.id);
-    setForm({ code: service.code, name: service.name, description: service.description, duration: service.duration });
+    setForm({ code: service.code, name: service.name, description: service.description, duration: service.duration, requirements: service.requirements.join("\n") });
     setNotice("");
     setShowForm(true);
   }
@@ -58,6 +69,7 @@ export default function ServicesPage() {
     const code = form.code.trim().toUpperCase();
     const name = form.name.trim();
     const description = form.description.trim();
+    const requirements = form.requirements.split("\n").map(line => line.trim()).filter(Boolean);
     if (!code || !name || !description || form.duration < 1) return;
     if (services.some(service => service.code === code && service.id !== editingId)) {
       setNotice("Kode layanan sudah digunakan. Gunakan kode yang berbeda.");
@@ -66,24 +78,24 @@ export default function ServicesPage() {
     if (databaseMode) {
       try {
         const supabase = getSupabaseBrowserClient();
-        const payload = { code, name, description, estimated_duration: Number(form.duration) };
+        const payload = { code, name, description, estimated_duration: Number(form.duration), requirements };
         const result = editingId !== null
           ? await supabase.from("services").update(payload).eq("id", String(editingId))
           : await supabase.from("services").insert({ ...payload, is_active: true });
         if (result.error) throw result.error;
-        const { data, error } = await supabase.from("services").select("id,code,name,description,estimated_duration,is_active").order("name");
+        const { data, error } = await fetchServices();
         if (error) throw error;
-        setServices((data ?? []).map(row => ({ id: row.id, code: row.code, name: row.name, description: row.description ?? "", duration: row.estimated_duration, active: row.is_active })));
+        setServices((data ?? []).map(toService));
         setNotice(editingId !== null ? "Layanan berhasil diperbarui di database." : "Layanan berhasil ditambahkan ke database.");
         setShowForm(false);
       } catch (error) { setNotice(error instanceof Error ? error.message : "Gagal menyimpan layanan."); }
       return;
     }
     if (editingId !== null) {
-      setServices(current => current.map(service => service.id === editingId ? { ...service, code, name, description, duration: Number(form.duration) } : service));
+      setServices(current => current.map(service => service.id === editingId ? { ...service, code, name, description, duration: Number(form.duration), requirements } : service));
       setNotice("Layanan diperbarui pada data contoh.");
     } else {
-      setServices(current => [...current, { id: Math.max(0, ...current.map(service => Number(service.id))) + 1, code, name, description, duration: Number(form.duration), active: true }]);
+      setServices(current => [...current, { id: Math.max(0, ...current.map(service => Number(service.id))) + 1, code, name, description, duration: Number(form.duration), active: true, requirements }]);
       setNotice("Layanan baru ditambahkan pada data contoh.");
     }
     setShowForm(false);
@@ -113,6 +125,7 @@ export default function ServicesPage() {
         <label className="space-y-2 text-sm font-medium text-gray-700">Nama Layanan<input required maxLength={100} value={form.name} onChange={e=>setForm(v=>({...v,name:e.target.value}))} placeholder="Nama layanan" className="w-full rounded-xl border border-gray-200 px-3 py-3 font-normal outline-none focus:border-purple-500"/></label>
         <label className="space-y-2 text-sm font-medium text-gray-700">Estimasi Durasi (menit)<input required type="number" min={1} max={480} value={form.duration} onChange={e=>setForm(v=>({...v,duration:Number(e.target.value)}))} className="w-full rounded-xl border border-gray-200 px-3 py-3 font-normal outline-none focus:border-purple-500"/></label>
         <label className="space-y-2 text-sm font-medium text-gray-700 md:col-span-2">Deskripsi<textarea required maxLength={500} rows={3} value={form.description} onChange={e=>setForm(v=>({...v,description:e.target.value}))} placeholder="Jelaskan layanan" className="w-full rounded-xl border border-gray-200 px-3 py-3 font-normal outline-none focus:border-purple-500"/></label>
+        <label className="space-y-2 text-sm font-medium text-gray-700 md:col-span-2">Dokumen yang harus dibawa<span className="block text-xs font-normal text-gray-500">Satu dokumen per baris. Daftar ini tampil kepada warga di aplikasi mobile.</span><textarea rows={5} maxLength={1500} value={form.requirements} onChange={e=>setForm(v=>({...v,requirements:e.target.value}))} placeholder={"Fotokopi Kartu Keluarga (KK)\nFotokopi KTP-el pemohon"} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100" /></label>
         <div className="flex gap-3 md:col-span-2"><button type="submit" className="rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700">Simpan Layanan</button><button type="button" onClick={()=>setShowForm(false)} className="rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</button></div>
       </form>
     </section>}
