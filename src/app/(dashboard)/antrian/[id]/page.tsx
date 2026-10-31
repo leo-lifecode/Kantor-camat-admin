@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
 import QueueStatusBadge from "@/components/queue/QueueStatusBadge";
 import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
 import { formatDuration, secondsBetween } from "@/lib/queue-time";
 
 export default function QueueDetailPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const queueNumber = decodeURIComponent(params.id ?? "A-003");
   const { queues, updateStatus, notice, dataMode, ready } = useDemoQueues();
@@ -26,8 +27,12 @@ export default function QueueDetailPage() {
   const canComplete = queue.status === "SERVING";
   const canSkip = queue.status === "WAITING" || queue.status === "CALLED";
 
-  function action(next: QueueStatus) {
-    void updateStatus(queueNumber, next);
+  async function action(next: QueueStatus) {
+    const active = await updateStatus(queueNumber, next);
+    // Selesai/dilewati: database langsung memanggil tiket berikutnya, jadi pindah ke detail tiket itu.
+    if ((next === "COMPLETED" || next === "SKIPPED") && active && active !== queueNumber) {
+      router.push(`/antrian/${encodeURIComponent(active)}`);
+    }
   }
 
   return (
