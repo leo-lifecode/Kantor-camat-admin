@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
 import QueueStatusBadge from "@/components/queue/QueueStatusBadge";
 import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
 import { formatDuration, secondsBetween } from "@/lib/queue-time";
@@ -12,6 +13,9 @@ export default function QueueDetailPage() {
   const params = useParams<{ id: string }>();
   const queueNumber = decodeURIComponent(params.id ?? "A-003");
   const { queues, updateStatus, notice, dataMode, ready } = useDemoQueues();
+  // Nomor tiket tujuan selama transisi; kosong lagi begitu halaman tiket baru tampil.
+  const [movingTo, setMovingTo] = useState<string | null>(null);
+  useEffect(() => { setMovingTo(null); }, [queueNumber]);
   const queue = queues.find((item) => item.number === queueNumber);
 
   if (!queue) {
@@ -31,12 +35,15 @@ export default function QueueDetailPage() {
     const active = await updateStatus(queueNumber, next);
     // Selesai/dilewati: database langsung memanggil tiket berikutnya, jadi pindah ke detail tiket itu.
     if ((next === "COMPLETED" || next === "SKIPPED") && active && active !== queueNumber) {
+      setMovingTo(active);
+      await new Promise((resolve) => setTimeout(resolve, 900));
       router.push(`/antrian/${encodeURIComponent(active)}`);
     }
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div key={queueNumber} className="page-enter relative mx-auto max-w-6xl space-y-6">
+      {movingTo && <div role="status" aria-live="polite" className="absolute inset-0 z-10 flex items-start justify-center rounded-2xl bg-white/80 pt-40 backdrop-blur-sm"><div className="flex items-center gap-3 rounded-2xl border border-purple-100 bg-white px-6 py-4 shadow-lg"><Loader2 size={22} className="animate-spin text-purple-600" /><div><p className="text-sm font-semibold text-gray-900">Memanggil antrian berikutnya</p><p className="text-xs text-gray-500">Membuka detail {movingTo}…</p></div></div></div>}
       <div className="flex items-center gap-3">
         <Link href="/antrian" className="rounded-xl border border-gray-200 bg-white p-2.5 text-gray-600 hover:bg-gray-50"><ArrowLeft size={19} /></Link>
         <div><h1 className="text-2xl font-bold text-gray-900">Detail Antrian</h1><p className="mt-1 text-sm text-gray-500">Informasi proses antrian dan timestamp FCFS.</p></div>
