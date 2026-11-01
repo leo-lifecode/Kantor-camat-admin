@@ -82,7 +82,11 @@ function mapDatabaseQueue(row: QueueDatabaseRow): DemoQueue {
 
 // Urutan FCFS: tanggal, lalu jam kedatangan, lalu nomor. Database memakai arrival_time dan id.
 const byArrival = (a: DemoQueue, b: DemoQueue) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number);
-const activeNumber = (list: DemoQueue[] | null) => list?.find((item) => item.status === "CALLED" || item.status === "SERVING")?.number ?? null;
+/** Kunci tiket untuk URL dan aksi: id database bila ada. Nomor antrian dimulai lagi tiap hari, jadi nomor saja tidak unik lintas hari. */
+export const queueKey = (item: DemoQueue) => item.id ?? item.number;
+/** Cari tiket menurut kunci (id atau nomor). Bila nomor sama ada di beberapa hari, ambil yang terbaru. */
+export const findQueue = (list: DemoQueue[], key: string) => list.find((item) => item.id === key) ?? [...list].reverse().find((item) => item.number === key);
+const activeKey = (list: DemoQueue[] | null) => { const item = list?.find((entry) => entry.status === "CALLED" || entry.status === "SERVING"); return item ? queueKey(item) : null; };
 const oldestWaiting = (list: DemoQueue[]) => list.filter((item) => item.status === "WAITING").sort(byArrival)[0];
 
 export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
@@ -161,7 +165,7 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
 
   const updateStatus = useCallback(async (number: string, status: QueueStatus) => {
     if (dataMode === "supabase") {
-      const queue = queues.find((item) => item.number === number);
+      const queue = findQueue(queues, number);
       if (!queue?.id) return null;
       try {
         const supabase = getSupabaseBrowserClient();
@@ -170,16 +174,17 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
           // Database memanggil antrian WAITING paling awal HARI INI (antrian hari lalu sudah dilewati otomatis),
           // jadi tombol "Panggil" pada satu baris hanya boleh dipakai untuk antrian paling awal itu.
           const first = oldestWaiting(queues.filter((item) => item.date === officeDateKey()));
-          if (first?.number !== number) {
+          if (first?.id !== queue.id) {
             setNotice(`FCFS: ${first?.number ?? "tidak ada antrian"} harus dipanggil lebih dahulu.`);
             return null;
           }
           result = await supabase.rpc("call_next_queue");
-          const calledNumber = (result.data as { queue_number?: string } | null)?.queue_number;
-          if (!result.error && calledNumber && calledNumber !== number) {
+          const calledRow = result.data as { id?: string; queue_number?: string } | null;
+          const calledNumber = calledRow?.queue_number;
+          if (!result.error && calledNumber && calledRow?.id !== queue.id) {
             // Terjadi bila antrian hari lalu masih WAITING dan queue_lifecycle_hardening.sql belum dijalankan.
-            setNotice(`Database memanggil ${calledNumber}, bukan ${number}, karena ${calledNumber} lebih awal menurut FCFS. Lewati atau layani ${calledNumber} lebih dahulu.`);
-            return activeNumber(await refreshFromDatabase());
+            setNotice(`Database memanggil ${calledNumber}, bukan ${queue.number}, karena ${calledNumber} lebih awal menurut FCFS. Lewati atau layani ${calledNumber} lebih dahulu.`);
+            return activeKey(await refreshFromDatabase());
           }
         } else if (status === "SERVING") {
           result = await supabase.rpc("start_queue_service", { p_queue_id: queue.id });
@@ -192,9 +197,9 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
           return null;
         }
         if (result.error) throw result.error;
-        setNotice(`Status ${number} diperbarui di database.`);
+        setNotice(`Status ${queue.number} diperbarui di database.`);
         // Database dapat langsung memanggil tiket berikutnya (pemanggilan otomatis); kembalikan tiket aktif terbaru.
-        return activeNumber(await refreshFromDatabase());
+        return activeKey(await refreshFromDatabase());
       } catch (error) {
         setNotice(error instanceof Error ? error.message : "Aksi database gagal.");
         return null;

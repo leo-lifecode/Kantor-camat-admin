@@ -2,17 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { CheckCircle2, PlayCircle, SkipForward } from "lucide-react";
-import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
+import { queueKey, useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function CurrentQueue() {
   const router = useRouter();
   const { currentQueue, queues, callNext, updateStatus, notice, dataMode, ready } = useDemoQueues();
   const waitingCount = queues.filter((queue) => queue.status === "WAITING").length;
   const active = currentQueue;
-  const openDetail = (number: string | null | undefined) => { if (number) router.push(`/antrian/${encodeURIComponent(number)}`); };
+  const openDetail = (key: string | null | undefined) => { if (key) router.push(`/antrian/${encodeURIComponent(key)}`); };
   // Setelah tiket selesai, database memanggil tiket berikutnya otomatis; langsung buka detailnya.
-  const complete = async () => { if (!active) return; const next = await updateStatus(active.number, "COMPLETED"); if (next && next !== active.number) openDetail(next); };
-  const callAndOpen = async () => { const called = await callNext(); openDetail(called?.number); };
+  const complete = async () => { if (!active) return; const next = await updateStatus(queueKey(active), "COMPLETED"); if (next && next !== queueKey(active)) openDetail(next); };
+  const callAndOpen = async () => { const called = await callNext(); openDetail(called && queueKey(called)); };
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -30,7 +30,7 @@ export default function CurrentQueue() {
       {notice && <p role="status" className="mt-4 rounded-xl bg-purple-50 p-3 text-xs leading-5 text-purple-800">{notice}</p>}
       <div className="mt-4 grid grid-cols-2 gap-3">
         {active?.status === "CALLED"
-          ? <button onClick={() => updateStatus(active.number, "SERVING")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-3 py-3 text-sm font-semibold text-purple-700 hover:bg-purple-100"><PlayCircle size={17} />Mulai Dilayani</button>
+          ? <button onClick={() => updateStatus(queueKey(active), "SERVING")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-3 py-3 text-sm font-semibold text-purple-700 hover:bg-purple-100"><PlayCircle size={17} />Mulai Dilayani</button>
           : <button onClick={complete} disabled={active?.status !== "SERVING"} className="inline-flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-3 text-sm font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={17} />Selesaikan</button>}
         <button onClick={callAndOpen} disabled={!!active || waitingCount === 0} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-3 py-3 text-sm font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-40"><SkipForward size={17} />Panggil Berikutnya</button>
       </div>

@@ -25,13 +25,13 @@ export default function QueueTable({ searchTerm = "", statusFilter = "ALL", date
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredQueues.map((queue) => (
-              <tr key={queue.number} className="hover:bg-gray-50">
-                <td className="px-5 py-4"><Link href={`/antrian/${queue.number}`} className="font-semibold text-purple-700 hover:underline">{queue.number}</Link></td>
+              <tr key={queue.id ?? `${queue.date}-${queue.number}`} className="hover:bg-gray-50">
+                <td className="px-5 py-4"><Link href={`/antrian/${encodeURIComponent(queue.id ?? queue.number)}`} className="font-semibold text-purple-700 hover:underline">{queue.number}</Link></td>
                 <td className="px-5 py-4 text-sm font-medium text-gray-900">{queue.name}</td>
                 <td className="px-5 py-4 text-sm text-gray-600">{queue.service}</td>
                 <td className="px-5 py-4 font-mono text-xs text-gray-600">{queue.arrival}</td>
                 <td className="px-5 py-4"><QueueStatusBadge status={queue.status as QueueStatus} /></td>
-                <td className="px-5 py-4 text-right"><Link href={`/antrian/${queue.number}`} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50">Detail <ArrowUpRight size={16} /></Link></td>
+                <td className="px-5 py-4 text-right"><Link href={`/antrian/${encodeURIComponent(queue.id ?? queue.number)}`} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50">Detail <ArrowUpRight size={16} /></Link></td>
               </tr>
             ))}
             {filteredQueues.length === 0 && <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-gray-500">{ready ? "Tidak ada data antrian yang cocok." : "Memuat data antrian…"}</td></tr>}
