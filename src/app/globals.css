@@ -24,3 +24,8 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 ::selection { background: #e9d5ff; color: #581c87; }
+
+/* Transisi halaman detail antrian: muncul perlahan saat berpindah tiket. */
+@keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.page-enter { animation: page-enter 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }

@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert, Image, Platform, RefreshControl, ScrollView,
+  ActivityIndicator, Alert, Image, Modal, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { AppIcon, IconName, IconText } from "./src/AppIcon";
 import * as Notifications from "expo-notifications";
 import * as Speech from "expo-speech";
 import type { Session } from "@supabase/supabase-js";
@@ -12,7 +12,7 @@ import { StatusBar as ExpoStatusBar } from "expo-status-bar";
 import { supabase } from "./src/lib/supabase";
 import { isExpiredTicket } from "./src/lib/queue-day";
 
-type Service = { id: string; name: string; description: string | null; estimated_duration: number };
+type Service = { id: string; name: string; description: string | null; estimated_duration: number; requirements?: string[] | null };
 type Queue = {
   id: string; queue_number: string; status: string; arrival_time: string;
   called_time: string | null; service?: { name: string } | null;
@@ -61,6 +61,7 @@ function AppContent() {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [queueHistory, setQueueHistory] = useState<HistoryQueue[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [openAnnouncement, setOpenAnnouncement] = useState<Announcement | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [banner, setBanner] = useState("");
   const lastQueueStatus = useRef<string | null>(null);
@@ -69,7 +70,13 @@ function AppContent() {
   const loadData = useCallback(async (userId: string) => {
     if (!supabase) return;
     const [serviceResult, queueResult, announcementResult, historyResult] = await Promise.all([
-      supabase.from("services").select("id,name,description,estimated_duration").eq("is_active", true).order("name"),
+      (async () => {
+        const client = supabase;
+        const full = await client.from("services").select("id,name,description,estimated_duration,requirements").eq("is_active", true).order("name");
+        // Basis data yang belum menjalankan migrasi persyaratan tidak punya kolom requirements; tetap muat layanan tanpa daftar dokumen.
+        if (full.error && /requirements/i.test(full.error.message)) return client.from("services").select("id,name,description,estimated_duration").eq("is_active", true).order("name");
+        return full;
+      })(),
       supabase.from("queues").select("id,queue_number,status,arrival_time,called_time,services(name)").eq("user_id", userId).in("status", ["WAITING", "CALLED", "SERVING"]).order("arrival_time", { ascending: true }).limit(1).maybeSingle(),
       supabase.from("announcements").select("id,title,content,category,image_url,published_at").eq("is_active", true).order("published_at", { ascending: false }).limit(10),
       supabase.from("queues").select("id,queue_number,status,arrival_time,called_time,start_service_time,completion_time,services(name)").eq("user_id", userId).in("status", ["COMPLETED", "SKIPPED", "CANCELLED"]).order("arrival_time", { ascending: false }).limit(30),
@@ -282,12 +289,12 @@ function AppContent() {
   return <View style={styles.screen}>
     <ExpoStatusBar style="dark" />
     <View style={[styles.topBar, { height: BAR_HEIGHT + insets.top, paddingTop: insets.top }]}>
-      <View style={styles.brandMark}><Ionicons name="ticket" size={24} color="#fff" /></View>
+      <View style={styles.brandMark}><AppIcon name="ticket" size={24} color="#fff" /></View>
       <View style={styles.brandCopy}>
         <Text style={styles.brandEyebrow}>Kecamatan Talawi</Text>
         <Text style={styles.brandTitle}>{screen === "home" ? "Home" : screen === "services" ? "Antrian" : screen === "status" ? "Antrian" : screen === "history" ? "Riwayat" : "Profil"}</Text>
       </View>
-      <TouchableOpacity style={styles.headerAction} onPress={() => setBanner("Notifikasi antrean akan muncul di sini.")}><Ionicons name="notifications-outline" size={23} color={colors.ink} /></TouchableOpacity>
+      <TouchableOpacity style={styles.headerAction} onPress={() => setBanner("Notifikasi antrean akan muncul di sini.")}><AppIcon name="notifications-outline" size={23} color={colors.ink} /></TouchableOpacity>
       <TouchableOpacity style={styles.avatar} onPress={() => setScreen("profile")}><Text style={styles.avatarText}>{firstName.slice(0, 1).toUpperCase()}</Text></TouchableOpacity>
     </View>
 
@@ -307,18 +314,18 @@ function AppContent() {
             <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>Sistem aktif</Text></View>
           </View>
           <TouchableOpacity style={styles.heroQueue} onPress={() => setScreen(queue ? "status" : "services")}>
-            <View style={styles.heroQueueIcon}><Ionicons name="ticket-outline" size={24} color={colors.purple} /></View>
+            <View style={styles.heroQueueIcon}><AppIcon name="ticket-outline" size={24} color={colors.purple} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroQueueLabel}>{queue ? "ANTREAN ANDA" : "LAYANAN KECAMATAN"}</Text>
               <Text style={styles.heroQueueNumber}>{queue ? queue.queue_number : "Ambil nomor"}</Text>
               <Text style={styles.heroQueueMeta}>{queue ? statusLabel(queue.status) : "Administrasi kependudukan & surat"}</Text>
             </View>
-            {queue ? <Ionicons name="chevron-forward" size={24} color={colors.purple} /> : null}
+            {queue ? <AppIcon name="chevron-forward" size={24} color={colors.purple} /> : null}
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.quickAction} onPress={() => setScreen(queue ? "status" : "services")}>
-          <View style={styles.quickIcon}><Ionicons name="add" size={26} color={colors.purple} /></View>
+          <View style={styles.quickIcon}><AppIcon name="add" size={26} color={colors.purple} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.quickTitle}>{queue ? "Lihat antrean aktif" : "Perlu layanan kecamatan?"}</Text>
             <Text style={styles.quickSubtitle}>{queue ? "Pantau posisi dan status layanan" : "Pilih layanan dan ambil nomor antrean"}</Text>
@@ -332,7 +339,7 @@ function AppContent() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
           {services.slice(0, 5).map((service, index) => <TouchableOpacity key={service.id} style={styles.categoryCard} onPress={() => { setSelectedService(service.id); setScreen("services"); }}>
-            <View style={[styles.categoryIcon, { backgroundColor: index % 2 ? "#EAFBF3" : "#EEEAFE" }]}><Ionicons name={serviceIconName(service.name)} size={22} color={colors.purple} /></View>
+            <View style={[styles.categoryIcon, { backgroundColor: index % 2 ? "#EAFBF3" : "#EEEAFE" }]}><AppIcon name={serviceIconName(service.name)} size={22} color={colors.purple} /></View>
             <Text style={styles.categoryName} numberOfLines={2}>{service.name}</Text>
             <Text style={styles.categoryHint}>{service.estimated_duration} mnt</Text>
           </TouchableOpacity>)}
@@ -342,27 +349,29 @@ function AppContent() {
         <View style={styles.sectionHeading}>
           <View><Text style={styles.sectionTitle}>Informasi & pengumuman</Text><Text style={styles.sectionCaption}>Informasi terbaru dari kantor</Text></View>
         </View>
-        {announcements.slice(0, 3).map((item) => <View key={item.id} style={styles.announcement}>
-          <View style={styles.announcementIcon}><Text style={styles.announcementIconText}>i</Text></View>
+        {announcements.slice(0, 3).map((item) => <TouchableOpacity key={item.id} style={styles.announcement} activeOpacity={0.8} onPress={() => setOpenAnnouncement(item)}>
+          <View style={styles.announcementIcon}><AppIcon name="information-circle-outline" size={22} color={colors.purple} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.announcementMeta}>{(item.category || "INFORMASI").toUpperCase()}  •  {item.published_at ? new Date(item.published_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "Terbaru"}</Text>
             <Text style={styles.announcementTitle}>{item.title}</Text>
             <Text style={styles.announcementBody} numberOfLines={2}>{item.content}</Text>
+            <Text style={styles.announcementMore}>Baca selengkapnya</Text>
           </View>
-        </View>)}
+          <AppIcon name="chevron-forward" size={20} color="#b7b1d5" />
+        </TouchableOpacity>)}
         {announcements.length === 0 && <View style={styles.emptyCard}><Text style={styles.muted}>Belum ada pengumuman yang dipublikasikan.</Text></View>}
 
         <View style={styles.sectionHeading}><View><Text style={styles.sectionTitle}>Status loket pelayanan</Text><Text style={styles.sectionCaption}>Estimasi waktu sesuai layanan</Text></View></View>
         {services.slice(0, 3).map((service, index) => <TouchableOpacity key={service.id} style={styles.servicePreview} onPress={() => { setSelectedService(service.id); setScreen("services"); }}>
-          <View style={styles.servicePreviewIcon}><Ionicons name={serviceIconName(service.name)} size={22} color={colors.purple} /></View>
+          <View style={styles.servicePreviewIcon}><AppIcon name={serviceIconName(service.name)} size={22} color={colors.purple} /></View>
           <View style={{ flex: 1 }}>
             <Text style={styles.servicePreviewTitle}>{service.name}</Text>
             <Text style={styles.servicePreviewMeta}>{service.description ?? "Pelayanan Kantor Camat Talawi"}</Text>
-            <Text style={styles.servicePreviewEstimate}><Ionicons name="time-outline" size={13} color={colors.muted} />  Estimasi {service.estimated_duration} menit</Text>
+            <IconText icon="time-outline" size={13} color={colors.muted} style={styles.servicePreviewEstimate}>Estimasi {service.estimated_duration} menit</IconText>
           </View>
-          <Ionicons name="chevron-forward" size={22} color="#b7b1d5" />
+          <AppIcon name="chevron-forward" size={22} color="#b7b1d5" />
         </TouchableOpacity>)}
-        <View style={styles.tipCard}><View style={styles.tipIcon}><Ionicons name="bulb-outline" size={19} color={colors.purple} /></View><Text style={styles.tipText}><Text style={{ fontWeight: "800", color: colors.ink }}>Tips nyaman: </Text>Siapkan berkas pendukung sebelum nomor dipanggil agar pelayanan lebih lancar.</Text></View>
+        <View style={styles.tipCard}><View style={styles.tipIcon}><AppIcon name="bulb-outline" size={19} color={colors.purple} /></View><Text style={styles.tipText}><Text style={{ fontWeight: "800", color: colors.ink }}>Tips nyaman: </Text>Siapkan berkas pendukung sebelum nomor dipanggil agar pelayanan lebih lancar.</Text></View>
       </>}
 
       {screen === "services" && <>
@@ -378,7 +387,7 @@ function AppContent() {
           <View style={styles.stepLine} />
           <View style={styles.step}><Text style={styles.stepCircle}>3</Text><Text style={styles.stepText}>Tiket</Text></View>
         </View>
-        <View style={styles.searchBox}><Ionicons name="search" size={20} color={colors.muted} style={{ marginRight: 8 }} /><TextInput value={serviceQuery} onChangeText={setServiceQuery} placeholder="Cari layanan surat, KTP, KK..." placeholderTextColor="#9999A3" style={styles.searchInput} /></View>
+        <View style={styles.searchBox}><AppIcon name="search" size={20} color={colors.muted} style={{ marginRight: 8 }} /><TextInput value={serviceQuery} onChangeText={setServiceQuery} placeholder="Cari layanan surat, KTP, KK..." placeholderTextColor="#9999A3" style={styles.searchInput} /></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {(["Semua", "Kependudukan", "Surat & Rekomendasi"] as const).map((category) => (
             <TouchableOpacity key={category} onPress={() => setServiceCategory(category)} style={serviceCategory === category ? styles.filterActive : styles.filterChip}>
@@ -388,23 +397,25 @@ function AppContent() {
         </ScrollView>
         {filteredServices.map((service) => <TouchableOpacity key={service.id} activeOpacity={0.88} onPress={() => setSelectedService(service.id)} style={[styles.serviceChoice, selectedService === service.id && styles.serviceChoiceSelected]}>
           <View style={styles.serviceChoiceTop}>
-            <View style={styles.serviceChoiceIcon}><Ionicons name={serviceIconName(service.name)} size={22} color={colors.purple} /></View>
+            <View style={styles.serviceChoiceIcon}><AppIcon name={serviceIconName(service.name)} size={22} color={colors.purple} /></View>
             <View style={{ flex: 1 }}>
               <Text style={styles.serviceChoiceTitle}>{service.name}</Text>
               <Text style={styles.serviceChoiceDescription}>{service.description ?? "Layanan administrasi Kantor Camat Talawi."}</Text>
             </View>
-            <Ionicons name={selectedService === service.id ? "radio-button-on" : "radio-button-off"} size={22} color={selectedService === service.id ? colors.purple : "#d4d4d8"} />
+            <AppIcon name={selectedService === service.id ? "radio-button-on" : "radio-button-off"} size={22} color={selectedService === service.id ? colors.purple : "#d4d4d8"} />
           </View>
-          <View style={styles.serviceChoiceFooter}><Text style={styles.serviceChoiceMeta}><Ionicons name="business-outline" size={13} color={colors.muted} />  Pelayanan Kecamatan</Text><Text style={styles.serviceChoiceMeta}><Ionicons name="time-outline" size={13} color={colors.muted} />  ±{service.estimated_duration} mnt</Text></View>
+          <View style={styles.serviceChoiceFooter}><IconText icon="business-outline" size={13} color={colors.muted} style={styles.serviceChoiceMeta}>Pelayanan Kecamatan</IconText><IconText icon="time-outline" size={13} color={colors.muted} style={styles.serviceChoiceMeta}>±{service.estimated_duration} mnt</IconText></View>
         </TouchableOpacity>)}
         {filteredServices.length === 0 && <View style={styles.emptyCard}><Text style={styles.muted}>Layanan tidak ditemukan.</Text></View>}
         <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}><Text style={styles.summaryLabel}><Ionicons name="clipboard-outline" size={14} color={colors.purple} />  RINGKASAN ANTREAN</Text><Text style={styles.summaryPill}>Layanan</Text></View>
+          <View style={styles.summaryHeader}><IconText icon="clipboard-outline" size={14} color={colors.purple} style={styles.summaryLabel}>RINGKASAN ANTREAN</IconText><Text style={styles.summaryPill}>Layanan</Text></View>
           <View style={styles.divider} />
           <Text style={styles.summaryCaption}>Layanan terpilih</Text>
           <Text style={styles.summaryService}>{selected?.name ?? "Pilih layanan terlebih dahulu"}</Text>
           <Text style={styles.summaryEstimate}>{selected ? "Estimasi pelayanan ±" + selected.estimated_duration + " menit" : "Nomor antrean dibuat setelah konfirmasi"}</Text>
-          <View style={styles.documentTip}><Text style={styles.documentTipText}><Ionicons name="information-circle-outline" size={15} color={colors.purple} />  Siapkan dokumen asli dan fotokopi sesuai persyaratan layanan.</Text></View>
+          {selected?.requirements?.length
+            ? <View style={styles.documentTip}><Text style={styles.documentTitle}>Dokumen yang harus dibawa</Text><RequirementList items={selected.requirements} /></View>
+            : <View style={styles.documentTip}><IconText icon="information-circle-outline" size={15} color={colors.purple} style={styles.documentTipText}>Siapkan dokumen asli dan fotokopi sesuai persyaratan layanan.</IconText></View>}
         </View>
         <TouchableOpacity style={[styles.primaryButton, (!selectedService || busy || !!queue) && styles.disabled]} disabled={!selectedService || busy || !!queue} onPress={() => void createQueue()}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{queue ? "Anda masih memiliki antrean aktif" : "Lanjut & Ambil Nomor Antrean  →"}</Text>}
@@ -413,18 +424,19 @@ function AppContent() {
       </>}
 
       {screen === "status" && queue && <>
-        <View style={styles.realtimeRow}><View style={styles.liveDot} /><Text style={styles.realtimeText}>Live realtime server</Text><View style={styles.updatePill}><Text style={styles.updatePillText}><Ionicons name="sync" size={12} color={colors.purple} />  FCFS</Text></View></View>
+        <View style={styles.realtimeRow}><View style={styles.liveDot} /><Text style={styles.realtimeText}>Live realtime server</Text><View style={styles.updatePill}><IconText icon="sync" size={12} color={colors.purple} style={styles.updatePillText}>FCFS</IconText></View></View>
         <View style={styles.statusCard}>
           <View style={styles.statusAccent} />
-          <View style={styles.statusTop}><View><Text style={styles.statusEyebrow}>NOMOR ANTREAN ANDA</Text><Text style={styles.statusNumber}>{queue.queue_number}</Text></View><View style={[styles.statusPill, queue.status === "CALLED" || queue.status === "SERVING" ? styles.statusPillCalled : null]}><Text style={styles.statusPillText}><Ionicons name="ellipse" size={8} color={colors.amber} />  {statusLabel(queue.status)}</Text></View></View>
-          <View style={styles.statusService}><Ionicons name={serviceIconName(queue.service?.name ?? "")} size={22} color={colors.purple} /><View style={{ flex: 1 }}><Text style={styles.statusServiceName}>{queue.service?.name ?? "Layanan kecamatan"}</Text><Text style={styles.statusServiceMeta}>Kantor Camat Talawi</Text></View></View>
+          <View style={styles.statusTop}><View><Text style={styles.statusEyebrow}>NOMOR ANTREAN ANDA</Text><Text style={styles.statusNumber}>{queue.queue_number}</Text></View><View style={[styles.statusPill, queue.status === "CALLED" || queue.status === "SERVING" ? styles.statusPillCalled : null]}><IconText icon="ellipse" size={8} color={colors.amber} style={styles.statusPillText}>{statusLabel(queue.status)}</IconText></View></View>
+          <View style={styles.statusService}><AppIcon name={serviceIconName(queue.service?.name ?? "")} size={22} color={colors.purple} /><View style={{ flex: 1 }}><Text style={styles.statusServiceName}>{queue.service?.name ?? "Layanan kecamatan"}</Text><Text style={styles.statusServiceMeta}>Kantor Camat Talawi</Text></View></View>
           <View style={styles.statusMetrics}>
             <View style={styles.metric}><Text style={styles.metricLabel}>Nomor antrean</Text><Text style={styles.metricValue}>{queue.queue_number}</Text><Text style={styles.metricHint}>tiket Anda</Text></View>
             <View style={styles.metric}><Text style={styles.metricLabel}>Estimasi</Text><Text style={styles.metricValue}>{queueService?.estimated_duration ?? "—"}</Text><Text style={styles.metricHint}>menit layanan</Text></View>
             <View style={styles.metric}><Text style={styles.metricLabel}>Status</Text><Text style={styles.metricValueSmall}>{statusLabel(queue.status)}</Text><Text style={styles.metricHint}>real-time</Text></View>
           </View>
         </View>
-        <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><Text style={styles.ticketButtonText}><Ionicons name="qr-code-outline" size={16} color={colors.purple} />  Tampilkan Tiket Digital</Text></TouchableOpacity>
+        {queueService?.requirements?.length ? <View style={styles.documentCard}><Text style={styles.documentTitle}>Dokumen yang harus dibawa</Text><RequirementList items={queueService.requirements} /></View> : null}
+        <TouchableOpacity style={styles.ticketButton} onPress={() => Alert.alert("Tiket Antrean Digital", "Nomor antrean Anda: " + queue.queue_number + "\nTunjukkan nomor ini kepada petugas.")}><IconText icon="qr-code-outline" size={16} color={colors.purple} style={styles.ticketButtonText}>Tampilkan Tiket Digital</IconText></TouchableOpacity>
         {queue.status === "WAITING" && <TouchableOpacity
           style={[styles.cancelQueueButton, busy && styles.disabled]}
           disabled={busy}
@@ -457,11 +469,11 @@ function AppContent() {
             <Text style={styles.sectionCaption}>30 antrean terakhir yang selesai, dilewati, atau dibatalkan</Text>
           </View>
           <TouchableOpacity style={styles.historyRefresh} disabled={refreshing} onPress={() => void refresh()}>
-            <Text style={styles.historyRefreshText}><Ionicons name="refresh" size={14} color={colors.purple} />  Segarkan</Text>
+            <IconText icon="refresh" size={14} color={colors.purple} style={styles.historyRefreshText}>Segarkan</IconText>
           </TouchableOpacity>
         </View>
         {queueHistory.length === 0 && <View style={styles.emptyCard}>
-          <Ionicons name="time-outline" size={38} color={colors.purple} style={{ marginBottom: 2 }} />
+          <AppIcon name="time-outline" size={38} color={colors.purple} style={{ marginBottom: 2 }} />
           <Text style={styles.sectionTitle}>Belum ada riwayat</Text>
           <Text style={styles.muted}>Antrean yang selesai, dilewati, atau dibatalkan akan muncul di sini.</Text>
           <TouchableOpacity style={styles.primaryButton} onPress={() => setScreen(queue ? "status" : "services")}><Text style={styles.primaryText}>{queue ? "Lihat antrean aktif" : "Ambil antrean"}</Text></TouchableOpacity>
@@ -498,17 +510,34 @@ function AppContent() {
         </View>
         <View style={styles.profileSection}>
           <Text style={styles.profileSectionTitle}>Informasi Akun</Text>
-          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Ionicons name="person-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoLabel}>Nama lengkap</Text><Text style={styles.profileInfoValue}>{displayName}</Text></View></View>
-          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Ionicons name="mail-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoLabel}>Email terdaftar</Text><Text style={styles.profileInfoValue}>{session.user.email ?? "Tidak tersedia"}</Text></View></View>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><AppIcon name="person-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoLabel}>Nama lengkap</Text><Text style={styles.profileInfoValue}>{displayName}</Text></View></View>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><AppIcon name="mail-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoLabel}>Email terdaftar</Text><Text style={styles.profileInfoValue}>{session.user.email ?? "Tidak tersedia"}</Text></View></View>
         </View>
         <View style={styles.profileSection}>
           <Text style={styles.profileSectionTitle}>Tentang Aplikasi</Text>
-          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Ionicons name="calendar-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoValue}>Antrian Talawi</Text><Text style={styles.profileInfoLabel}>Layanan antrean digital Kecamatan Talawi</Text></View></View>
-          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><Ionicons name="shield-checkmark-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoValue}>Sistem FCFS</Text><Text style={styles.profileInfoLabel}>Urutan antrean berdasarkan waktu kedatangan</Text></View></View>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><AppIcon name="calendar-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoValue}>Antrian Talawi</Text><Text style={styles.profileInfoLabel}>Layanan antrean digital Kecamatan Talawi</Text></View></View>
+          <View style={styles.profileInfoRow}><View style={styles.profileInfoIcon}><AppIcon name="shield-checkmark-outline" size={20} color={colors.purple} /></View><View style={{ flex: 1 }}><Text style={styles.profileInfoValue}>Sistem FCFS</Text><Text style={styles.profileInfoLabel}>Urutan antrean berdasarkan waktu kedatangan</Text></View></View>
         </View>
-        <TouchableOpacity style={styles.profileLogout} onPress={() => void signOut()}><Text style={styles.profileLogoutText}><Ionicons name="log-out-outline" size={17} color="#c2413a" />  Keluar dari akun</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.profileLogout} onPress={() => void signOut()}><IconText icon="log-out-outline" size={17} color="#c2413a" style={styles.profileLogoutText}>Keluar dari akun</IconText></TouchableOpacity>
       </>}
     </ScrollView>
+    <Modal visible={!!openAnnouncement} animationType="slide" transparent onRequestClose={() => setOpenAnnouncement(null)}>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalSheet, { paddingBottom: 16 + insets.bottom }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalCategory}>{(openAnnouncement?.category || "INFORMASI").toUpperCase()}</Text>
+            <TouchableOpacity onPress={() => setOpenAnnouncement(null)} accessibilityLabel="Tutup" style={styles.modalClose}><AppIcon name="close" size={20} color={colors.ink} /></TouchableOpacity>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {openAnnouncement?.image_url ? <Image source={{ uri: openAnnouncement.image_url }} style={styles.modalImage} resizeMode="cover" /> : null}
+            <Text style={styles.modalTitle}>{openAnnouncement?.title}</Text>
+            {openAnnouncement?.published_at ? <IconText icon="calendar-outline" size={14} color={colors.muted} style={styles.modalDate}>{new Date(openAnnouncement.published_at).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</IconText> : null}
+            <Text style={styles.modalBody}>{openAnnouncement?.content}</Text>
+          </ScrollView>
+          <TouchableOpacity style={styles.modalButton} onPress={() => setOpenAnnouncement(null)}><Text style={styles.modalButtonText}>Tutup</Text></TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
     <View style={[styles.tabBar, { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
       <TabButton icon="home" label="Home" active={screen === "home"} onPress={() => setScreen("home")} />
       <TabButton icon="ticket" label="Antrian" active={screen === "services" || screen === "status"} onPress={() => setScreen(queue ? "status" : "services")} />
@@ -528,8 +557,6 @@ function statusLabel(status: string) {
   return status;
 }
 
-type IconName = React.ComponentProps<typeof Ionicons>["name"];
-
 function serviceIconName(name: string): IconName {
   const value = name.toLocaleLowerCase("id-ID");
   if (value.includes("ktp") || value.includes("identitas") || value.includes("nik")) return "card-outline";
@@ -540,9 +567,18 @@ function serviceIconName(name: string): IconName {
   return "document-outline";
 }
 
+function RequirementList({ items }: { items: string[] }) {
+  return <View style={{ gap: 7, marginTop: 6 }}>
+    {items.map((item, index) => <View key={index} style={{ flexDirection: "row", alignItems: "flex-start" }}>
+      <AppIcon name="checkmark-circle-outline" size={16} color={colors.purple} style={{ marginRight: 8, marginTop: 1 }} />
+      <Text style={styles.requirementText}>{item}</Text>
+    </View>)}
+  </View>;
+}
+
 function TabButton({ icon, label, active, onPress }: { icon: IconName; label: string; active: boolean; onPress: () => void }) {
   return <TouchableOpacity onPress={onPress} style={styles.tabItem}>
-    <Ionicons name={active ? icon : (`${icon}-outline` as IconName)} size={23} color={active ? colors.purple : colors.muted} />
+    <AppIcon name={active ? icon : (`${icon}-outline` as IconName)} size={23} color={active ? colors.purple : colors.muted} />
     <Text style={[styles.tabLabel, active && styles.tabActive]}>{label}</Text>
   </TouchableOpacity>;
 }
@@ -551,7 +587,7 @@ function QueueStep({ done, active, title, caption, last = false }: { done: boole
   return <View style={styles.stepRow}>
     <View style={styles.stepRail}>
       <View style={[styles.queueStepIcon, done && styles.queueStepDone, active && styles.queueStepActive]}>
-        {done ? <Ionicons name="checkmark" size={16} color="#fff" /> : <Ionicons name="ellipse" size={8} color={active ? "#fff" : colors.muted} />}
+        {done ? <AppIcon name="checkmark" size={16} color="#fff" /> : <AppIcon name="ellipse" size={8} color={active ? "#fff" : colors.muted} />}
       </View>
       {!last && <View style={styles.stepConnector} />}
     </View>
@@ -596,7 +632,7 @@ const styles = StyleSheet.create({
   banner: { backgroundColor: "#ede9fe", borderColor: "#ddd6fe", borderWidth: 1, borderRadius: 13, padding: 12 },
   bannerText: { color: "#4c1d95", fontSize: 13, fontWeight: "600", lineHeight: 19 },
   sectionHeader: { marginTop: 6 },
-  announcement: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 16, gap: 8 },
+  announcement: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 16, gap: 10, flexDirection: "row", alignItems: "center" },
   tag: { alignSelf: "flex-start", backgroundColor: colors.pale, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
   tagText: { color: colors.purple, fontSize: 10, fontWeight: "800" },
   announcementTitle: { color: colors.ink, fontWeight: "800", fontSize: 16 },
@@ -659,6 +695,21 @@ const styles = StyleSheet.create({
   historyMeta: { color: colors.muted, fontSize: 11, lineHeight: 17 },
   historyNote: { color: colors.ink, fontSize: 11, fontWeight: "600", marginTop: 2 },
   announcementIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.pale, alignItems: "center", justifyContent: "center" },
+  announcementMore: { color: colors.purple, fontSize: 11, fontWeight: "800", marginTop: 4 },
+  documentTitle: { color: colors.ink, fontSize: 12, fontWeight: "800" },
+  documentCard: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 16 },
+  requirementText: { flex: 1, color: colors.ink, fontSize: 12, lineHeight: 18 },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(23,23,37,0.45)", justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: "#fff", borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, maxHeight: "88%" },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  modalCategory: { color: colors.purple, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" },
+  modalImage: { width: "100%", height: 170, borderRadius: 16, marginBottom: 14, backgroundColor: colors.pale },
+  modalTitle: { color: colors.ink, fontSize: 20, lineHeight: 27, fontWeight: "800" },
+  modalDate: { color: colors.muted, fontSize: 12 },
+  modalBody: { color: colors.ink, fontSize: 14, lineHeight: 22, marginTop: 14 },
+  modalButton: { marginTop: 14, minHeight: 48, borderRadius: 15, backgroundColor: colors.purple, alignItems: "center", justifyContent: "center" },
+  modalButtonText: { color: "#fff", fontWeight: "800", fontSize: 14 },
   announcementIconText: { color: colors.purple, fontWeight: "800" },
   announcementMeta: { color: colors.purple, fontSize: 9, fontWeight: "700", marginBottom: 4 },
   servicePreview: { backgroundColor: "#fff", borderRadius: 18, padding: 13, flexDirection: "row", alignItems: "center", gap: 10, elevation: 2 },

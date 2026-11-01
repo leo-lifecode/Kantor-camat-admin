@@ -33,7 +33,8 @@ const initialQueues: DemoQueue[] = [
 
 type QueueContextValue = {
   queues: DemoQueue[];
-  updateStatus: (number: string, status: QueueStatus) => Promise<void>;
+  /** Mengembalikan nomor antrian yang aktif di loket (CALLED/SERVING) sesudah aksi, atau null bila loket kosong. */
+  updateStatus: (number: string, status: QueueStatus) => Promise<string | null>;
   callNext: () => Promise<DemoQueue | null>;
   currentQueue: DemoQueue | undefined;
   notice: string;
@@ -81,6 +82,7 @@ function mapDatabaseQueue(row: QueueDatabaseRow): DemoQueue {
 
 // Urutan FCFS: tanggal, lalu jam kedatangan, lalu nomor. Database memakai arrival_time dan id.
 const byArrival = (a: DemoQueue, b: DemoQueue) => a.date.localeCompare(b.date) || a.arrival.localeCompare(b.arrival) || a.number.localeCompare(b.number);
+const activeNumber = (list: DemoQueue[] | null) => list?.find((item) => item.status === "CALLED" || item.status === "SERVING")?.number ?? null;
 const oldestWaiting = (list: DemoQueue[]) => list.filter((item) => item.status === "WAITING").sort(byArrival)[0];
 
 export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
@@ -92,8 +94,8 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
   const [notice, setNotice] = useState("");
   const lastExpiredDay = useRef("");
 
-  const refreshFromDatabase = useCallback(async () => {
-    if (!supabaseConfigured) return;
+  const refreshFromDatabase = useCallback(async (): Promise<DemoQueue[] | null> => {
+    if (!supabaseConfigured) return null;
     try {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
@@ -102,9 +104,12 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
         .order("arrival_time", { ascending: true })
         .order("id", { ascending: true });
       if (error) throw error;
-      setQueues((data ?? []).map(mapDatabaseQueue));
+      const list = (data ?? []).map(mapDatabaseQueue);
+      setQueues(list);
+      return list;
     } catch (error) {
       setNotice(error instanceof Error ? `Supabase: ${error.message}` : "Gagal memuat data Supabase.");
+      return null;
     } finally {
       setReady(true);
     }
@@ -157,7 +162,7 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
   const updateStatus = useCallback(async (number: string, status: QueueStatus) => {
     if (dataMode === "supabase") {
       const queue = queues.find((item) => item.number === number);
-      if (!queue?.id) return;
+      if (!queue?.id) return null;
       try {
         const supabase = getSupabaseBrowserClient();
         let result: { data?: unknown; error: { message: string } | null };
@@ -167,15 +172,14 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
           const first = oldestWaiting(queues.filter((item) => item.date === officeDateKey()));
           if (first?.number !== number) {
             setNotice(`FCFS: ${first?.number ?? "tidak ada antrian"} harus dipanggil lebih dahulu.`);
-            return;
+            return null;
           }
           result = await supabase.rpc("call_next_queue");
           const calledNumber = (result.data as { queue_number?: string } | null)?.queue_number;
           if (!result.error && calledNumber && calledNumber !== number) {
             // Terjadi bila antrian hari lalu masih WAITING dan queue_lifecycle_hardening.sql belum dijalankan.
             setNotice(`Database memanggil ${calledNumber}, bukan ${number}, karena ${calledNumber} lebih awal menurut FCFS. Lewati atau layani ${calledNumber} lebih dahulu.`);
-            await refreshFromDatabase();
-            return;
+            return activeNumber(await refreshFromDatabase());
           }
         } else if (status === "SERVING") {
           result = await supabase.rpc("start_queue_service", { p_queue_id: queue.id });
@@ -185,15 +189,16 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
           result = await supabase.rpc("skip_queue", { p_queue_id: queue.id });
         } else {
           setNotice("Transisi status ini tidak didukung.");
-          return;
+          return null;
         }
         if (result.error) throw result.error;
         setNotice(`Status ${number} diperbarui di database.`);
-        await refreshFromDatabase();
+        // Database dapat langsung memanggil tiket berikutnya (pemanggilan otomatis); kembalikan tiket aktif terbaru.
+        return activeNumber(await refreshFromDatabase());
       } catch (error) {
         setNotice(error instanceof Error ? error.message : "Aksi database gagal.");
+        return null;
       }
-      return;
     }
 
     // Mode demo harus menegakkan aturan yang sama dengan database: loket tunggal dan urutan FCFS.
@@ -201,12 +206,12 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
       const busyQueue = queues.find((item) => item.status === "CALLED" || item.status === "SERVING");
       if (busyQueue) {
         setNotice(`Loket masih aktif pada ${busyQueue.number}. Selesaikan antrian ini sebelum memanggil berikutnya.`);
-        return;
+        return busyQueue.number;
       }
       const first = oldestWaiting(queues);
       if (first && first.number !== number) {
         setNotice(`FCFS: ${first.number} harus dipanggil lebih dahulu.`);
-        return;
+        return null;
       }
     }
 
@@ -218,6 +223,7 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
       ...(status === "COMPLETED" ? { completed: new Date().toLocaleTimeString("id-ID", { hour12: false }) } : {}),
     } : queue));
     setNotice(`Status antrian ${number} diperbarui menjadi ${status} (mode demo).`);
+    return status === "CALLED" || status === "SERVING" ? number : null;
   }, [dataMode, queues, refreshFromDatabase]);
 
   const callNext = useCallback(async () => {
@@ -227,8 +233,8 @@ export function DemoQueueProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase.rpc("call_next_queue");
         if (error) throw error;
         setNotice(data?.queue_number ? `Antrian ${data.queue_number} berhasil dipanggil dari database.` : "Antrian berikutnya berhasil dipanggil.");
-        await refreshFromDatabase();
-        return queues.find((queue) => queue.number === data?.queue_number) ?? null;
+        const list = await refreshFromDatabase();
+        return list?.find((queue) => queue.number === data?.queue_number) ?? null;
       } catch (error) {
         setNotice(error instanceof Error ? error.message : "Gagal memanggil antrian.");
         return null;
