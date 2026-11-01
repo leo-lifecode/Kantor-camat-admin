@@ -16,7 +16,7 @@ export default function QueueStatus() {
       </div>
       <div className="divide-y">
         {waiting.map((queue) => (
-          <Link href={`/antrian/${queue.number}`} key={queue.number} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50">
+          <Link href={`/antrian/${encodeURIComponent(queue.id ?? queue.number)}`} key={queue.id ?? `${queue.date}-${queue.number}`} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50">
             <div className="flex items-center gap-4"><div className="flex h-10 w-16 items-center justify-center rounded-xl bg-purple-50 text-sm font-bold text-purple-700">{queue.number}</div><div><p className="text-sm font-semibold text-gray-900">{queue.service}</p><p className="text-xs text-gray-500">{queue.name} · masuk {queue.arrival}</p></div></div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">Menunggu</span>
           </Link>

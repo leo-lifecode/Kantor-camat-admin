@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Filter, Search, Plus } from "lucide-react";
 import QueueTable from "@/components/queue/QueueTable";
-import { useDemoQueues } from "@/components/demo/DemoQueueProvider";
+import { queueKey, useDemoQueues } from "@/components/demo/DemoQueueProvider";
 
 export default function QueuePage() {
   const [status, setStatus] = useState("ALL");
@@ -20,7 +20,7 @@ export default function QueuePage() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div><h1 className="text-2xl font-bold text-gray-900">Antrian</h1><p className="mt-1 text-sm text-gray-500">Kelola antrian layanan Kantor Camat Talawi.</p></div>
-        <button type="button" onClick={async () => { const called = await callNext(); if (called) router.push(`/antrian/${encodeURIComponent(called.number)}`); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700"><Plus size={18} />Panggil Berikutnya</button>
+        <button type="button" onClick={async () => { const called = await callNext(); if (called) router.push(`/antrian/${encodeURIComponent(queueKey(called))}`); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white hover:bg-purple-700"><Plus size={18} />Panggil Berikutnya</button>
       </div>
       {notice && <p role="status" className="rounded-xl border border-purple-100 bg-purple-50 p-3 text-sm text-purple-800">{notice}</p>}
       <div className="grid gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_auto_auto]">

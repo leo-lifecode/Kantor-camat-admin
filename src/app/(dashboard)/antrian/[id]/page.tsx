@@ -5,21 +5,21 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Loader2, Clock3, PlayCircle, SkipForward, UserRound } from "lucide-react";
 import QueueStatusBadge from "@/components/queue/QueueStatusBadge";
-import { useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
+import { findQueue, queueKey, useDemoQueues, type QueueStatus } from "@/components/demo/DemoQueueProvider";
 import { formatDuration, secondsBetween } from "@/lib/queue-time";
 
 export default function QueueDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const queueNumber = decodeURIComponent(params.id ?? "A-003");
+  const routeKey = decodeURIComponent(params.id ?? "A-003");
   const { queues, updateStatus, notice, dataMode, ready } = useDemoQueues();
   // Nomor tiket tujuan selama transisi; kosong lagi begitu halaman tiket baru tampil.
   const [movingTo, setMovingTo] = useState<string | null>(null);
-  useEffect(() => { setMovingTo(null); }, [queueNumber]);
-  const queue = queues.find((item) => item.number === queueNumber);
+  useEffect(() => { setMovingTo(null); }, [routeKey]);
+  const queue = findQueue(queues, routeKey);
 
   if (!queue) {
-    return <div className="rounded-2xl border bg-white p-8"><h1 className="text-xl font-bold text-gray-900">{ready ? "Antrian tidak ditemukan" : "Memuat data antrian…"}</h1>{ready && <p className="mt-2 text-sm text-gray-500">Nomor {queueNumber} {dataMode === "supabase" ? "tidak ditemukan di database." : "tidak ada dalam data demo."}</p>}<Link href="/antrian" className="mt-4 inline-flex text-sm font-semibold text-purple-700">Kembali ke daftar</Link></div>;
+    return <div className="rounded-2xl border bg-white p-8"><h1 className="text-xl font-bold text-gray-900">{ready ? "Antrian tidak ditemukan" : "Memuat data antrian…"}</h1>{ready && <p className="mt-2 text-sm text-gray-500">Antrian {routeKey} {dataMode === "supabase" ? "tidak ditemukan di database." : "tidak ada dalam data demo."}</p>}<Link href="/antrian" className="mt-4 inline-flex text-sm font-semibold text-purple-700">Kembali ke daftar</Link></div>;
   }
 
   // Mode database memakai durasi yang dihitung database. Mode demo menghitungnya dari jam pada data contoh.
@@ -31,10 +31,12 @@ export default function QueueDetailPage() {
   const canComplete = queue.status === "SERVING";
   const canSkip = queue.status === "WAITING" || queue.status === "CALLED";
 
+  const currentKey = queueKey(queue);
+
   async function action(next: QueueStatus) {
-    const active = await updateStatus(queueNumber, next);
+    const active = await updateStatus(currentKey, next);
     // Selesai/dilewati: database langsung memanggil tiket berikutnya, jadi pindah ke detail tiket itu.
-    if ((next === "COMPLETED" || next === "SKIPPED") && active && active !== queueNumber) {
+    if ((next === "COMPLETED" || next === "SKIPPED") && active && active !== currentKey) {
       setMovingTo(active);
       await new Promise((resolve) => setTimeout(resolve, 900));
       router.push(`/antrian/${encodeURIComponent(active)}`);
@@ -42,7 +44,7 @@ export default function QueueDetailPage() {
   }
 
   return (
-    <div key={queueNumber} className="page-enter relative mx-auto max-w-6xl space-y-6">
+    <div key={routeKey} className="page-enter relative mx-auto max-w-6xl space-y-6">
       {movingTo && <div role="status" aria-live="polite" className="absolute inset-0 z-10 flex items-start justify-center rounded-2xl bg-white/80 pt-40 backdrop-blur-sm"><div className="flex items-center gap-3 rounded-2xl border border-purple-100 bg-white px-6 py-4 shadow-lg"><Loader2 size={22} className="animate-spin text-purple-600" /><div><p className="text-sm font-semibold text-gray-900">Memanggil antrian berikutnya</p><p className="text-xs text-gray-500">Membuka detail {movingTo}…</p></div></div></div>}
       <div className="flex items-center gap-3">
         <Link href="/antrian" className="rounded-xl border border-gray-200 bg-white p-2.5 text-gray-600 hover:bg-gray-50"><ArrowLeft size={19} /></Link>
