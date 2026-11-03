@@ -8,9 +8,7 @@
     "android": {
       "package": "id.go.talawi.antrianwarga",
       "googleServicesFile": "./google-services.json",
-      "permissions": [
-        "POST_NOTIFICATIONS"
-      ],
+      "permissions": ["POST_NOTIFICATIONS"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#6957e8"
@@ -31,7 +29,7 @@
         "projectId": "e6a046d1-d356-485f-955f-03c4500a6ad1"
       }
     },
-    "owner": "fahrizalas",
+    "owner": "antriantalawi",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
